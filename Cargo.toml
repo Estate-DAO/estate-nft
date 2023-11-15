@@ -1,0 +1,4 @@
+[workspace]
+members = [
+    "src/estate_dao_nft_backend",
+]

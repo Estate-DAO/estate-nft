@@ -1,0 +1,26 @@
+{
+  "canisters": {
+    "estate_dao_nft_backend": {
+      "candid": "src/estate_dao_nft_backend/estate_dao_nft_backend.did",
+      "package": "estate_dao_nft_backend",
+      "type": "rust"
+    },
+    "estate_dao_nft_frontend": {
+      "dependencies": [
+        "estate_dao_nft_backend"
+      ],
+      "source": [
+        "src/estate_dao_nft_frontend/assets"
+      ],
+      "type": "assets"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
