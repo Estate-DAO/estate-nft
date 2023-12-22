@@ -1,3 +1,4 @@
+
 type CollectionMetadata = record {
   supply_cap : nat16;
   desc : text;
@@ -15,14 +16,25 @@ type NFTMetadata = record {
   nft_symbol : text;
 };
 
-type Result = variant {
-  Ok : record { NFTMetadata; CollectionMetadata };
-  Err : text;
+type Metadata = record {
+  supply_cap : nat16;
+  nft_token_id : text;
+  desc : text;
+  logo : text;
+  collection_id : text;
+  collection_name : text;
+  royalty_percent : nat16;
+  nft_uri : text;
+  total_supply : nat16;
+  nft_symbol : text;
 };
+
+type Result = variant { Ok : Metadata; Err : text };
 
 type Result_1 = variant { Ok : text; Err : text };
 
-service : () -> {
-  get_ : (text) -> (Result) query;
+service : {
+  init_collection : () -> (Result_1);
+  get_metadata : (text) -> (Result) query;
   mint : (text, text) -> (Result_1);
 }

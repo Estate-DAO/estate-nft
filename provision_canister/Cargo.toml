@@ -1,0 +1,4 @@
+[workspace]
+members = [
+    "src/provision_canister_backend",
+]

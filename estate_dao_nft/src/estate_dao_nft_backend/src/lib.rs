@@ -1,14 +1,16 @@
 mod state;
 
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
-use state::{NFTMetadata, CollectionMetadata, Account};
+use state::{NFTMetadata, CollectionMetadata, Metadata, Account};
 use serde::Serialize;
 
 use ic_cdk::{query, update, init};
-use std::{cell::RefCell, fs::Metadata};
+use std::{cell::RefCell};
 use std::collections::BTreeMap;
 
 type NFTList = BTreeMap<String, NFTMetadata>;
+// todo tbd CollectionList
+type CollectionList = BTreeMap<String, CollectionMetadata>;
 
 pub type Subaccount = [u8; 32];
 pub const DEFAULT_SUBACCOUNT: &Subaccount = &[0; 32];
@@ -21,9 +23,10 @@ thread_local! {
 }
 
 //collection specific data
-#[init]
-fn insert_collection_data() {
-    
+#[update] 
+fn init_collection() -> Result<String, String> {
+
+
     COLLECTION_DATA.with(|coll_data| {
 
         let total_minted = COUNTER.with(|counter| *counter.borrow());
@@ -43,7 +46,7 @@ fn insert_collection_data() {
             collection_id: "1".to_string(),
             name: "collection dummy".to_string(),
             desc: "description".to_string(),
-            logo: "uri".to_string(),
+            logo: "https://7y2y6-qqaaa-aaaao-a26hq-cai.icp0.io/logo.png".to_string(),
             royalty_percent: 300u16,
             total_supply: total_minted,
             supply_cap: 10000u16
@@ -55,6 +58,15 @@ fn insert_collection_data() {
     });
 
 
+    return Ok("collection created succesfully".to_string());
+
+
+
+    // COLLECTION_ID.with(|coll_id| {
+    //     *coll_id.borrow_mut() = "1".to_string();
+    // });
+
+
 }
 
 
@@ -63,6 +75,7 @@ fn insert_collection_data() {
 // fn update_collection_data() -> Result<String, String> {}
 
 
+// TODO update total_minted in collectionMetadata
 #[update]
 fn mint(symbol: String, uri: String) -> Result<String, String> {
 
@@ -85,8 +98,6 @@ fn mint(symbol: String, uri: String) -> Result<String, String> {
                 }
             )
         });
-
-
     });
 
     return Ok("NFT minted succesfully".to_string());
@@ -95,7 +106,8 @@ fn mint(symbol: String, uri: String) -> Result<String, String> {
 // Metadata items TBD
 // for now using NFTMetadata + Collection Metadata 
 #[query] 
-fn get_(token_id : String) -> Result<(NFTMetadata, CollectionMetadata), String> {
+fn get_metadata(token_id : String) -> Result<Metadata, String> {
+
 
     NFT_STORE.with(|nft_list| {
         let nft_lists = nft_list.borrow();
@@ -104,12 +116,26 @@ fn get_(token_id : String) -> Result<(NFTMetadata, CollectionMetadata), String> 
         if nft_data.is_none() {
             return Err(String::from("NFT not found"));
         }
-
-        let collection_data: CollectionMetadata = COLLECTION_DATA.with(|coll_data| { 
-                coll_data.borrow().to_owned() });
+        let nft_data = nft_data.unwrap().to_owned();
         
-        return Ok((nft_data.unwrap().clone(), collection_data));
+        let collection_data: CollectionMetadata = COLLECTION_DATA.with(|coll_data| { 
+            coll_data.borrow().to_owned() });
 
+            let metadata = Metadata{
+                collection_id: collection_data.collection_id,
+                nft_symbol: nft_data.nft_symbol,
+                nft_token_id: nft_data.nft_token_id,
+                nft_uri: nft_data.nft_uri,
+                collection_name: collection_data.name,
+                desc: collection_data.desc,
+                logo: collection_data.logo,
+                royalty_percent: collection_data.royalty_percent,
+                total_supply: collection_data.total_supply,
+                supply_cap: collection_data.supply_cap
+            };
+
+            
+            return Ok(metadata);
     }) 
 }
 

@@ -1,0 +1,41 @@
+type Result = variant { Ok : principal; Err : text };
+
+type CanisterIds = record {
+  asset_canister: principal;
+  minter_canister: principal;
+};
+
+type CanisterListResult = variant { Ok : vec CanisterIds; Err : text };
+
+type Result1 = variant { Ok : CanisterIds; Err : text };
+type ResultString = variant { Ok : text; Err : text };
+
+type Metadata = record {
+  supply_cap : nat16;
+  nft_token_id : text;
+  desc : text;
+  logo : text;
+  collection_id : text;
+  collection_name : text;
+  royalty_percent : nat16;
+  nft_uri : text;
+  total_supply : nat16;
+  nft_symbol : text;
+};
+
+type ResultMetadata = variant { Ok : Metadata; Err : text };
+
+service : { 
+    create_new_canister : () -> (Result);
+    create_and_init_canister_with_wasm : (principal) -> (Result);
+    call_fun : (principal) -> (text) query;
+    create_and_init_frontend_canister_with_wasm : (principal) -> (Result);
+    grant_commit_permission : (principal, principal) -> (text);
+    revoke_commit_permission : (principal, principal) -> (text);
+    all_canister_create : () -> (Result1);
+    get_all_canisters : () -> (CanisterListResult) query;
+    init_collection : (principal) -> (ResultString);
+    mint_NFT : (principal, text, text) -> (ResultString);
+    get_token_metadata : (principal, text) -> (ResultMetadata);
+
+}

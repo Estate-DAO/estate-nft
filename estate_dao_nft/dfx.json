@@ -9,8 +9,12 @@
       "dependencies": [
         "estate_dao_nft_backend"
       ],
+      "frontend": {
+        "entrypoint": "src/estate_dao_nft_frontend/src/index.html"
+      },
       "source": [
-        "src/estate_dao_nft_frontend/assets"
+        "src/estate_dao_nft_frontend/assets",
+        "dist/estate_dao_nft_frontend/"
       ],
       "type": "assets"
     }

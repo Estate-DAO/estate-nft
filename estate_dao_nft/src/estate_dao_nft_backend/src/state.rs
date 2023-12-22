@@ -12,7 +12,6 @@ pub struct Account{
     pub subaccount: Option<Subaccount>
 }
 
-
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct RoyaltyData{
     pub royalty_share: u16,
@@ -31,13 +30,30 @@ pub struct CollectionMetadata {
     pub royalty_percent: u16,
     pub total_supply: u16,
     pub supply_cap: u16,
+    // pub property_images: Vec<String>,
 }
 
-
+// NFT specific data
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct NFTMetadata {
     pub collection_id: String,
     pub nft_symbol: String,
     pub nft_token_id: String,
     pub nft_uri: String //image
+}
+
+// NFTMetadata + CollectionMetadata
+#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
+pub struct Metadata {
+    pub collection_id: String,
+    pub nft_symbol: String,
+    pub nft_token_id: String,
+    pub nft_uri: String, //image   
+    pub collection_name: String,
+    pub desc: String,
+    pub logo: String, //collection logo 
+    // pub royalty: RoyaltyData,
+    pub royalty_percent: u16,
+    pub total_supply: u16,
+    pub supply_cap: u16,
 }
