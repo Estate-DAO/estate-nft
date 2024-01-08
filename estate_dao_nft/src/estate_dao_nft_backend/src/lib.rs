@@ -26,7 +26,6 @@ thread_local! {
 #[update] 
 fn init_collection() -> Result<String, String> {
 
-
     COLLECTION_DATA.with(|coll_data| {
 
         let total_minted = COUNTER.with(|counter| *counter.borrow());
@@ -49,7 +48,8 @@ fn init_collection() -> Result<String, String> {
             logo: "https://7y2y6-qqaaa-aaaao-a26hq-cai.icp0.io/logo.png".to_string(),
             royalty_percent: 300u16,
             total_supply: total_minted,
-            supply_cap: 10000u16
+            supply_cap: 10000u16,
+            property_images: Vec::new(),
         }
     });
 
@@ -65,7 +65,6 @@ fn init_collection() -> Result<String, String> {
     // COLLECTION_ID.with(|coll_id| {
     //     *coll_id.borrow_mut() = "1".to_string();
     // });
-
 
 }
 
@@ -137,6 +136,42 @@ fn get_metadata(token_id : String) -> Result<Metadata, String> {
             
             return Ok(metadata);
     }) 
+}
+
+
+#[update] 
+fn add_collection_image(asset_canister_id: String, image: String) -> Result<CollectionMetadata, String> {
+
+    let image_uri = "https://".to_owned() + &asset_canister_id + ".icp0.io/" + &image;
+        
+    // let mut collection_data: CollectionMetadata = COLLECTION_DATA.with(|coll_data| { 
+    //     coll_data.borrow_mut().to_owned() });
+
+    COLLECTION_DATA.with(|coll_data| {
+
+        
+        let mut col_data= coll_data.borrow_mut().to_owned();
+        col_data.property_images.push(image_uri);
+
+        *coll_data.borrow_mut() = col_data;
+
+        //remove
+        let collection_data_test = COLLECTION_DATA.with(|coll_data| { 
+            coll_data.borrow().to_owned() }); 
+            
+        return Ok(collection_data_test);
+
+    })
+
+}
+
+#[query] 
+fn collection_image() -> Vec<String>{
+        
+    let collection_data = COLLECTION_DATA.with(|coll_data| { 
+        coll_data.borrow().to_owned() });
+            
+    collection_data.property_images
 }
 
 ic_cdk::export_candid!();

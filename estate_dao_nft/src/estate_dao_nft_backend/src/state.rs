@@ -30,7 +30,7 @@ pub struct CollectionMetadata {
     pub royalty_percent: u16,
     pub total_supply: u16,
     pub supply_cap: u16,
-    // pub property_images: Vec<String>,
+    pub property_images: Vec<String>,
 }
 
 // NFT specific data

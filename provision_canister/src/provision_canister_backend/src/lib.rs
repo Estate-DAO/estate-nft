@@ -397,5 +397,20 @@ fn get_all_canisters() -> Result<Vec<CanisterIds>, String> {
     })
 }
 
+#[query]
+async fn get_collection_images(id: Principal) -> Result<Vec<String>, String> {
+    let res =  call(id, "collection_image", (), ).await; 
+        match res{
+            Ok(r) => {
+                
+
+
+                let (res,): (Result<Vec<String>, String>,) = r;
+                res
+            },
+        Err(_) => Err("Error displaying collection images".to_string())
+    }
+}
+
 // Enable Candid export
 ic_cdk::export_candid!();

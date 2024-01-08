@@ -24,6 +24,7 @@ type Metadata = record {
 };
 
 type ResultMetadata = variant { Ok : Metadata; Err : text };
+type ResultColImage = variant { Ok : vec text; Err : text };
 
 service : { 
     create_new_canister : () -> (Result);
@@ -37,5 +38,6 @@ service : {
     init_collection : (principal) -> (ResultString);
     mint_NFT : (principal, text, text) -> (ResultString);
     get_token_metadata : (principal, text) -> (ResultMetadata);
+    get_collection_images : (principal) -> (ResultColImage);
 
 }

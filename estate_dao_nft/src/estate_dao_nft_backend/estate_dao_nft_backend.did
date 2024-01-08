@@ -1,19 +1,12 @@
-
 type CollectionMetadata = record {
   supply_cap : nat16;
   desc : text;
   logo : text;
   name : text;
   collection_id : text;
+  property_images : vec text;
   royalty_percent : nat16;
   total_supply : nat16;
-};
-
-type NFTMetadata = record {
-  nft_token_id : text;
-  collection_id : text;
-  nft_uri : text;
-  nft_symbol : text;
 };
 
 type Metadata = record {
@@ -28,13 +21,13 @@ type Metadata = record {
   total_supply : nat16;
   nft_symbol : text;
 };
-
-type Result = variant { Ok : Metadata; Err : text };
-
-type Result_1 = variant { Ok : text; Err : text };
-
+type Result = variant { Ok : CollectionMetadata; Err : text };
+type Result_1 = variant { Ok : Metadata; Err : text };
+type Result_2 = variant { Ok : text; Err : text };
 service : {
-  init_collection : () -> (Result_1);
-  get_metadata : (text) -> (Result) query;
-  mint : (text, text) -> (Result_1);
+  add_collection_image : (text, text) -> (Result);
+  collection_image : () -> (vec text) query;
+  get_metadata : (text) -> (Result_1) query;
+  init_collection : () -> (Result_2);
+  mint : (text, text) -> (Result_2);
 }
