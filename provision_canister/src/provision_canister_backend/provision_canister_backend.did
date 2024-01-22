@@ -1,16 +1,8 @@
-type Result = variant { Ok : principal; Err : text };
-
 type CanisterIds = record {
-  asset_canister: principal;
-  minter_canister: principal;
+  minter_canister : principal;
+  asset_canister : principal;
 };
-
-type CanisterListResult = variant { Ok : vec CanisterIds; Err : text };
-
-type Result1 = variant { Ok : CanisterIds; Err : text };
-type ResultString = variant { Ok : text; Err : text };
-
-type Metadata = record {
+type NFT_Metadata = record {
   supply_cap : nat16;
   nft_token_id : text;
   desc : text;
@@ -22,22 +14,18 @@ type Metadata = record {
   total_supply : nat16;
   nft_symbol : text;
 };
-
-type ResultMetadata = variant { Ok : Metadata; Err : text };
-type ResultColImage = variant { Ok : vec text; Err : text };
-
-service : { 
-    create_new_canister : () -> (Result);
-    create_and_init_canister_with_wasm : (principal) -> (Result);
-    call_fun : (principal) -> (text) query;
-    create_and_init_frontend_canister_with_wasm : (principal) -> (Result);
-    grant_commit_permission : (principal, principal) -> (text);
-    revoke_commit_permission : (principal, principal) -> (text);
-    all_canister_create : () -> (Result1);
-    get_all_canisters : () -> (CanisterListResult) query;
-    init_collection : (principal) -> (ResultString);
-    mint_NFT : (principal, text, text) -> (ResultString);
-    get_token_metadata : (principal, text) -> (ResultMetadata);
-    get_collection_images : (principal) -> (ResultColImage);
-
+type Result = variant { Ok : CanisterIds; Err : text };
+type Result_1 = variant { Ok : principal; Err : text };
+type Result_2 = variant { Ok : vec CanisterIds; Err : text };
+type Result_3 = variant { Ok : vec text; Err : text };
+type Result_4 = variant { Ok : NFT_Metadata; Err : text };
+type Result_5 = variant { Ok : text; Err : text };
+service : {
+  all_canister_create : (text, text) -> (Result);
+  create_new_canister : () -> (Result_1);
+  get_all_canisters : () -> (Result_2) query;
+  grant_commit_permission : (principal, principal) -> (text);
+  init_collection : (principal) -> (Result_5);
+  mint_NFT : (principal, text, text) -> (Result_5);
+  revoke_commit_permission : (principal, principal) -> (text);
 }

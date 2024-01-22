@@ -92,7 +92,7 @@ async fn create_and_init_canister_with_wasm(id: Principal) -> Result<Principal, 
             let principal_id = id;
 
             pub const WASM: &[u8] =
-                include_bytes!("/home/shrey/work/estate_dao_nft/estate_dao_nft/target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm.gz");
+                include_bytes!("//home/shrey/estate-nft/estate_dao_nft/target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm.gz");
                 // include_bytes!("../../../canister_dummy/target/wasm32-unknown-unknown/release/canister_dummy_backend.wasm");
             
             let wasm_file = WASM.to_vec();
@@ -213,7 +213,6 @@ async fn create_and_init_frontend_canister_with_wasm(id: Principal) -> Result<Pr
                 canister_id: principal_id,
                 arg: (serialized_bytes),
                 // arg: {vec![]},
-
             };
             // Install the Wasm code into the new canister
             let install_result = install_code(install_config).await;
@@ -227,7 +226,6 @@ async fn create_and_init_frontend_canister_with_wasm(id: Principal) -> Result<Pr
                 Err(err) => {
                     eprintln!("Error installing code: {:?}", err);
                     return Err(err.1);
-
                 }
             }
 
@@ -257,7 +255,7 @@ fn revoke_commit_permission(id: Principal, user_id: Principal) -> String {
 }
 
 #[update]
-async fn all_canister_create() -> Result<CanisterIds, String> {
+async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, String> {
     let settings = CanisterSettings::default();
     let create_arg = CreateCanisterArgument{
         settings: Some(settings)
@@ -277,7 +275,6 @@ async fn all_canister_create() -> Result<CanisterIds, String> {
         return Err("error creating asset canister".to_string());
     } 
 
-
     let install_arg = Some(AssetCanisterArgs::InitArgs);
     // let arg_vec = install_arg.as_bytes()
 
@@ -292,7 +289,7 @@ async fn all_canister_create() -> Result<CanisterIds, String> {
     let asset_canister_id = canister_id_1.canister_id;
 
     pub const WASM: &[u8] =
-        include_bytes!("/home/shrey/work/estate_dao_nft/estate_dao_nft/.dfx/local/canisters/estate_dao_nft_frontend/assetstorage.wasm.gz");
+        include_bytes!("/home/shrey/work/new_asset/.dfx/local/canisters/new_asset_frontend/assetstorage.wasm.gz");
     
     let wasm_file = WASM.to_vec();
 
@@ -342,7 +339,7 @@ async fn all_canister_create() -> Result<CanisterIds, String> {
     let minter_canister = canister_id_2.canister_id;
 
     pub const MINTERWASM: &[u8] =
-        include_bytes!("/home/shrey/work/estate_dao_nft/estate_dao_nft/target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm.gz");
+        include_bytes!("/home/shrey/estate-nft/estate_dao_nft/target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm.gz");
         // include_bytes!("../../../canister_dummy/target/wasm32-unknown-unknown/release/canister_dummy_backend.wasm");
     
     let wasm_file = MINTERWASM.to_vec();
@@ -354,6 +351,7 @@ async fn all_canister_create() -> Result<CanisterIds, String> {
         canister_id: minter_canister,
         arg: vec![],
     };
+
     // Install the Wasm code into the new canister
     let install_result = install_code(install_config).await;
 
@@ -363,6 +361,21 @@ async fn all_canister_create() -> Result<CanisterIds, String> {
             eprintln!("Error installing code: {:?}", err);
             return Err(err.1);
         }
+    }
+
+    //remove
+    let mut e:String = String::from("");
+
+    let res =  call(minter_canister, "init_collection", (name, desc, ), ).await; 
+        match res{
+            Ok(r) => {
+                let (res,): (Result<String, String>,) = r;
+            },
+        Err(_) =>{e=String::from("error")}
+    }
+
+    if e == "error".to_string(){
+        return(Err("error initializing struct".to_string()));
     }
 
     let canister_id_data = CanisterIds{
@@ -375,7 +388,6 @@ async fn all_canister_create() -> Result<CanisterIds, String> {
         canister_map.insert(minter_canister.clone(), canister_id_data.clone());
 
     });
-
 
     return Ok(canister_id_data);
     
@@ -402,9 +414,6 @@ async fn get_collection_images(id: Principal) -> Result<Vec<String>, String> {
     let res =  call(id, "collection_image", (), ).await; 
         match res{
             Ok(r) => {
-                
-
-
                 let (res,): (Result<Vec<String>, String>,) = r;
                 res
             },

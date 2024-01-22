@@ -1,5 +1,6 @@
 use serde::Serialize;
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
+use std::collections::HashMap;
 // use icrc_ledger_types::icrc1::account::Account;
 
 pub type Subaccount = [u8; 32];
@@ -26,11 +27,94 @@ pub struct CollectionMetadata {
     pub name: String,
     pub desc: String,
     pub logo: String, //collection logo 
-    // pub royalty: RoyaltyData,
-    pub royalty_percent: u16,
     pub total_supply: u16,
     pub supply_cap: u16,
+    pub prop_details: Option<PropDetails>,
     pub property_images: Vec<String>,
+    pub additional_metadata: Option<AdditionalMetadata>,
+}
+
+//Additional metadata
+//Royalty structure is not fixed yet in ICRC7
+#[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
+pub struct AdditionalMetadata {
+    pub additional_details: Option<AdditionalDetails>,
+    pub financial_details: Option<FinancialDetails>,
+    pub documents: Vec<HashMap<String, String>>,
+    pub market_details: Option<MarketDetails>,
+}
+
+// //Documents metadata
+// //Royalty structure is not fixed yet in ICRC7
+// #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
+// pub struct AdditionalDocuments {
+//     pub document1: String,
+//     pub document2: String,
+//     pub document3: String, 
+//     pub document4: String,
+//     pub document5: String,
+//     pub document6: String,
+// }
+
+//Documents metadata
+//Royalty structure is not fixed yet in ICRC7
+#[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
+pub struct AdditionalDetails {
+    pub last_renovation: Option<String>,
+    pub beds: Option<u32>,
+    pub year_built: Option<u32>, 
+    pub square_footage: Option<f32>,
+    pub flood_zone: Option<String>,
+    pub occupied: Option<String>,
+    pub baths: Option<u32>,
+    pub monthly_rent: Option<f32>,
+    pub crime_score: Option<u32>,
+    pub school_score: Option<u32>,
+    pub affordability: Option<f32>,
+    pub price_per_sq_foot: Option<f32>,
+}
+
+#[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
+pub struct TotalReturns {
+    pub projected_appreciation: Option<f32>,
+    pub average_5_year_roi: Option<f32>,
+    pub cap_rate: Option<f32>, 
+}
+
+#[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
+pub struct MonthlyGrossRents {
+    pub vacancy_rate: Option<f32>,
+    pub monthly_utiliiies: Option<f32>,
+    pub property_managment_fee: Option<f32>,
+    pub llc_monthly_franchise_tax: Option<f32>,
+    pub property_taxes: Option<f32>,
+    pub property_insurance: Option<f32>,
+    pub expense_to_income_ratio: Option<f32>,
+    pub monthly_cash_flow: Option<f32>,
+}
+
+#[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
+pub struct TotalInvestmentValue {
+    pub underlying_asset_price: Option<f32>,
+    pub homebase_closing_fee: Option<String>,
+    pub initial_mainatance_reserve: Option<f32>, 
+}
+
+//Documents metadata
+//Royalty structure is not fixed yet in ICRC7
+#[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
+pub struct FinancialDetails {
+    pub total_investement_value: Option<TotalInvestmentValue>,
+    pub monthly_gross_rents: Option<MonthlyGrossRents>,
+    pub total_returns: Option<TotalReturns>,
+}
+
+#[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
+pub struct MarketDetails {
+    pub location: Option<String>,
+    pub median_home_sale_price: Option<u32>,
+    pub average_rent: Option<u32>,
+    pub annual_popullation_growth: Option<u32>,
 }
 
 // NFT specific data
@@ -53,7 +137,17 @@ pub struct Metadata {
     pub desc: String,
     pub logo: String, //collection logo 
     // pub royalty: RoyaltyData,
-    pub royalty_percent: u16,
     pub total_supply: u16,
     pub supply_cap: u16,
 }
+
+#[derive(Clone, Debug, CandidType, Default, Deserialize, Serialize)]
+pub struct PropDetails {
+    pub purchase_price: Option<String>,
+    pub yields: Option<String>,
+    pub projected_rent: Option<String>,     
+    pub min_investment: Option<String>,     
+    pub year_built: Option<String>
+}
+
+// estate_dao_nft_backend
