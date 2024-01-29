@@ -1,12 +1,16 @@
+mod state;
+
+use candid::types::principal;
 use ic_cdk::api::management_canister::main::{create_canister, install_code, CreateCanisterArgument, CanisterInstallMode, InstallCodeArgument, CanisterSettings};
 use ic_cdk::api::call::{call, call_with_payment, CallResult,RejectionCode };
 use candid::{CandidType, Principal, Deserialize};
 use ic_cdk::api::management_canister::provisional::CanisterIdRecord;
-use ic_cdk::{update, query, notify};
+use ic_cdk::{caller, notify, query, update};
 use std::fs::{read, Metadata};
 use serde::Serialize;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use state::{CollectionMetadata, Status, PropertyData};
 
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
@@ -330,7 +334,7 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
         Ok(x) => x,
         Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
     };
-    
+
     if canister_id_2.canister_id == Principal::anonymous() {
         return Err("error creating asset canister".to_string());
     } 
@@ -341,7 +345,7 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
     pub const MINTERWASM: &[u8] =
         include_bytes!("/home/shrey/estate-nft/estate_dao_nft/target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm.gz");
         // include_bytes!("../../../canister_dummy/target/wasm32-unknown-unknown/release/canister_dummy_backend.wasm");
-    
+
     let wasm_file = MINTERWASM.to_vec();
 
     // create installCodeArgument
@@ -375,7 +379,7 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
     }
 
     if e == "error".to_string(){
-        return(Err("error initializing struct".to_string()));
+        return Err("error initializing struct".to_string());
     }
 
     let canister_id_data = CanisterIds{
@@ -386,27 +390,180 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
     CANISTER_STORE.with(|canister_store| {
         let mut canister_map =  canister_store.borrow_mut();
         canister_map.insert(minter_canister.clone(), canister_id_data.clone());
-
     });
 
     return Ok(canister_id_data);
-    
 }
 
-#[query]
-fn get_all_canisters() -> Result<Vec<CanisterIds>, String> {
+//test  
+// #[update]
+// fn test_auth_user() -> Result<Vec<Principal>, String> {
 
-    CANISTER_STORE.with(|canister_store| {
-        let canister_map = canister_store.borrow_mut();
-        if canister_map.to_owned().is_empty() {
-            return Err("Empty Canister List".to_string());
+//     let caller = caller();
+//     let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
+//     let mut minter_canister_vec: Vec<Principal> = Vec::new();
+//     minter_canister_vec.push(caller);
+//     minter_canister_vec.push(user);
+   
+   
+//     return Ok(minter_canister_vec);  
+
+// }
+
+#[update]
+fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
+
+    let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
+    if caller() != Principal::self_authenticating(user) {
+        return Err("unathorized user".to_string());
+    }
+    else{
+
+        CANISTER_STORE.with(|canister_store| {
+            let canister_map = canister_store.borrow_mut();
+            if canister_map.to_owned().is_empty() {
+                return Err("Empty Canister List".to_string());
+            }
+            let mut minter_canister_vec: Vec<Principal> = Vec::new();
+            for (_key, value) in canister_map.to_owned().iter() {
+                minter_canister_vec.push(value.to_owned().minter_canister);
+            }
+            return Ok(minter_canister_vec);  
+        })
+    }
+}
+
+
+// #[update]
+// async fn get_all_canisters() -> Result<Vec<(Principal, PropertyData)>, String> {
+
+//     CANISTER_STORE.with(|canister_store| {
+//         let canister_map = canister_store.borrow();
+//         if canister_map.to_owned().is_empty() {
+//             return Err("Empty Canister List".to_string());
+//         }
+
+//         // let mut canister_vec: Vec<CanisterIds> = Vec::new();
+//         // for (_key, value) in canister_map.to_owned().iter() {
+//         //     canister_vec.push(value.to_owned());
+//         // }
+
+//         let mut coll_vec: Vec<(Principal, PropertyData)> = Vec::new();
+
+//         //try 
+//         // let tasks: Vec<_> = 
+
+//         //     .map(|item| tokio::spawn(item.resolve()))
+//         //     .collect();
+//         // // now await them to get the resolve's to complete
+//         // for task in tasks {
+//         //     task.await.unwrap();
+//         // }
+
+//         let mut vec1 = Vec::new();
+
+//         for (_key, value) in canister_map.to_owned().iter() {
+//             let result = call(value.to_owned().minter_canister, "get_prop_data", (), ); 
+//             vec1.push(result);
+//         }
+
+//         vec1.into_iter().map(|item| tokio::spawn(item.await))
+//             .collect();
+
+//         for (_key, value) in canister_map.to_owned().iter() {
+
+//             match result{
+//                 Ok(r) => {
+//                     let (res,): (Result<PropertyData, String>,) = r;
+//                     match res{
+//                         Ok(data) => {
+//                             coll_vec.push((value.to_owned().minter_canister, data));
+//                         },
+//                         Err(_) => {return Err("error fetching struct".to_string());}
+//                     }
+//                 }
+//                 Err(_) => {return Err("error fetching".to_string());}
+//             }
+//         }
+//         return Ok(coll_vec);  
+//     })
+// }
+
+
+// #[query]
+// async fn get_canister_list_data(id: Principal) -> Result<Vec<String>, String> {
+//     let canister_list = CANISTER_STORE.with(|canister_store| {
+//         canister_store.borrow().to_owned();
+//     });
+//         if canister_list.is_empty() {
+//             return Err("Empty Canister List".to_string());
+//         }
+//     let res =  call(id, "get_prop_data", (), ).await; 
+//         match res{
+//             Ok(r) => {
+//                 let (res,): (Result<Vec<String>, String>,) = r;
+//                 res
+//             },
+//         Err(_) => Err("Error displaying collection images".to_string())
+//     }
+// }
+
+#[update]
+async fn filter_status() -> Result<Vec<Principal>, String> {
+
+    let collection_list = get_all_minter_canisters().unwrap();
+    let mut filtered_list:Vec<Principal> = Vec::new();
+
+    for col in collection_list{
+        let result =  call(col, "get_collection_status", (), ).await; 
+
+        match result{
+            Ok(r) => {
+                let (res,): (Result<Status, String>,) = r;
+                match res {
+                    Ok(s) => match s{
+                        Status::Upcoming=>{filtered_list.push(col)}
+                        Status::Live => todo!(),
+                        Status::Ended => todo!(),}
+                    Err(_) => return Err("Error fetching collection status".to_string())
+                }
+            },
+        Err(_) => return Err("Error fetching collection data call".to_string())
         }
-        let mut canister_vec: Vec<CanisterIds> = Vec::new();
-        for (_key, value) in canister_map.to_owned().iter() {
-            canister_vec.push(value.to_owned());
-        }
-        return Ok(canister_vec);  
-    })
+    }
+
+        // let coll_data_result =  call(col, "get_collection_metadata", ()).await; 
+        // match coll_data_result{
+        //     Ok(r) => {
+        //         let (res,): (Result<CollectionMetadata, String>,) = r;
+        //         // let coll_data: CollectionMetadata = coll_data_result.unwrap();
+        //         match res {
+        //             Ok(_) => match res.unwrap().status{
+        //                 Status::Upcoming=>{filtered_list.push(col)}
+        //                 Status::Live => todo!(),
+        //                 Status::Ended => todo!(),}
+        //             Err(_) => println!("dd")
+        //         }
+        //     },
+        //     Err(_) => println!("dd")
+        // };
+
+        // let coll_data: CollectionMetadata = coll_data_result.unwrap();
+        // match coll_data.status{
+        //     Status::Upcoming => {filtered_list.push(col)},
+        //     _ => println!("")
+        // }
+    // }
+    //todo loop
+
+        // let mut add_meta = col_data.additional_metadata.unwrap();
+        
+        // add_meta.documents = doc_details;
+        // col_data.additional_metadata = Some(add_meta);
+
+        // *co in l_data.borrow_mut() = col_data;
+
+        return Ok(filtered_list);
 }
 
 #[query]
@@ -420,6 +577,6 @@ async fn get_collection_images(id: Principal) -> Result<Vec<String>, String> {
         Err(_) => Err("Error displaying collection images".to_string())
     }
 }
-
+ 
 // Enable Candid export
 ic_cdk::export_candid!();

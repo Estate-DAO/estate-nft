@@ -19,6 +19,7 @@ type AdditionalMetadata = record {
   market_details : opt MarketDetails;
 };
 type CollectionMetadata = record {
+  status : Status;
   supply_cap : nat16;
   desc : text;
   logo : text;
@@ -26,6 +27,7 @@ type CollectionMetadata = record {
   name : text;
   collection_id : text;
   property_images : vec text;
+  prop_data : opt PropertyData;
   prop_details : opt PropDetails;
   total_supply : nat16;
 };
@@ -61,6 +63,11 @@ type MonthlyGrossRents = record {
   property_managment_fee : opt float32;
   monthly_utiliiies : opt float32;
 };
+type PropertyData = record { 
+  bed : nat16; 
+  area : nat16; 
+  bath : nat16 
+};
 type PropDetails = record {
   year_built : opt text;
   purchase_price : opt text;
@@ -68,10 +75,13 @@ type PropDetails = record {
   projected_rent : opt text;
   min_investment : opt text;
 };
+type Status = variant { Ended; Live; Upcoming };
 type Result = variant { Ok : CollectionMetadata; Err : text };
 type Result_1 = variant { Ok : MarketDetails; Err : text };
 type Result_2 = variant { Ok : Metadata; Err : text };
 type Result_3 = variant { Ok : text; Err : text };
+type Result_4 = variant { Ok : Status; Err : text };
+type Result_5 = variant { Ok : PropertyData; Err : text };
 type TotalInvestmentValue = record {
   homebase_closing_fee : opt text;
   initial_mainatance_reserve : opt float32;
@@ -94,4 +104,7 @@ service : {
   update_prop_det : (PropDetails) -> (Result_3);
   update_doc_details : (vec vec record { text; text }) -> (Result_3);
   mint : (text, text) -> (Result_3);
+  get_collection_status : () -> (Result_4) query;
+  update_prop_data : (PropertyData) -> (Result_3);
+  get_prop_data : () -> (Result_5) query;
 }

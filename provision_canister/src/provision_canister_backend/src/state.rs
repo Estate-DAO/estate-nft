@@ -18,13 +18,6 @@ pub struct RoyaltyData{
     pub royalty_account: Account,
 }
 
-#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
-pub struct PropertyData{
-    pub bed: u16,
-    pub bath: u16,
-    pub area: u16,
-}
-
 impl Default for Status {
     fn default() -> Self {
         Status::Upcoming
@@ -46,6 +39,7 @@ pub struct CollectionMetadata {
     pub collection_id: String,
     pub name: String,
     pub desc: String,
+    pub logo: String, //collection logo 
     pub total_supply: u16,
     pub supply_cap: u16,
     pub prop_details: Option<PropDetails>,
@@ -156,6 +150,7 @@ pub struct Metadata {
     pub nft_uri: String, //image   
     pub collection_name: String,
     pub desc: String,
+    pub logo: String, //collection logo 
     // pub royalty: RoyaltyData,
     pub total_supply: u16,
     pub supply_cap: u16,
@@ -168,6 +163,13 @@ pub struct PropDetails {
     pub projected_rent: Option<String>,     
     pub min_investment: Option<String>,     
     pub year_built: Option<String>
+}
+
+#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
+pub struct PropertyData{
+    pub bed: u16,
+    pub bath: u16,
+    pub area: u16,
 }
 
 // estate_dao_nft_backend

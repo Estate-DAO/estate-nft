@@ -1,7 +1,7 @@
 mod state;
 
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
-use state::{NFTMetadata, CollectionMetadata, Metadata, Account, AdditionalMetadata, PropDetails, AdditionalDetails, MarketDetails, FinancialDetails};
+use state::{Account, AdditionalDetails, AdditionalMetadata, CollectionMetadata, FinancialDetails, MarketDetails, Metadata, NFTMetadata, PropDetails, PropertyData, Status};
 use serde::Serialize;
 
 use ic_cdk::{query, update, init, caller};
@@ -35,24 +35,20 @@ fn init_collection(
 
         let total_minted = COUNTER.with(|counter| *counter.borrow());
 
-        // let add_doc = AdditionalMetadata{
-        //     document1, document2, document3, document4, document5, document6
-        // };
-
-        // CollectionMetadata{ 
-        //     collection_id: collection_id.clone(),
-        //     name: coll_metadata.name,
-        //     desc: coll_metadata.desc,
-        //     logo: coll_metadata.logo,
-        //     royalty_percent: coll_metadata.royalty_percent,
-        //     total_supply: total_minted,
-        //     supply_cap: coll_metadata.supply_cap,
-        // }
-
         //using static data for now
-        *coll_data.borrow_mut() = CollectionMetadata{collection_id:"1".to_string(),name,desc,logo:"logotttt".to_string(),total_supply:total_minted,supply_cap:10000u16,property_images:Vec::new(),
-            prop_details:None, 
-            additional_metadata: Some(AdditionalMetadata{additional_details:None, financial_details:None, documents:Vec::new(), market_details:None}) };
+        *coll_data.borrow_mut() = 
+            CollectionMetadata{
+                collection_id:"1".to_string(),
+                name,
+                desc,
+                total_supply:total_minted,
+                supply_cap:10000u16,
+                property_images:Vec::new(),
+                prop_data: None,
+                prop_details:None, 
+                additional_metadata: Some(AdditionalMetadata{additional_details:None, financial_details:None, documents:Vec::new(), market_details:None}),
+                status: Status::Upcoming
+        };
     });
 
     COLLECTION_ID.with(|coll_id| {
@@ -60,7 +56,6 @@ fn init_collection(
     });
 
     return Ok("collection created succesfully".to_string());
-
 
 }
 
@@ -83,11 +78,35 @@ fn update_prop_det(
 
         *coll_data.borrow_mut() = col_data;
 
+        return Ok("property details added succesfully".to_string());
+
+    })
+}
+
+// //property data
+// // #[update(guard = "allow_only_authorized_principal")] 
+#[update] 
+fn update_prop_data( 
+    prop_data: PropertyData
+) -> Result<String, String> {
+
+    COLLECTION_DATA.with(|coll_data| {
+
+        let mut col_data= coll_data.borrow_mut().to_owned();
+        
+        // if col_data.prop_details.is_some() {
+        //     return Err("property details already added".to_string());
+        // }
+
+        col_data.prop_data = Some(prop_data);
+
+        *coll_data.borrow_mut() = col_data;
+
         //remove
         // let collection_data_test = COLLECTION_DATA.with(|coll_data| { 
         //     coll_data.borrow().to_owned() }); 
 
-        return Ok("property details added succesfully".to_string());
+        return Ok("property data added succesfully".to_string());
 
     })
 }
@@ -151,9 +170,9 @@ fn update_additional_details(
 ) -> Result<String, String> {
 
     COLLECTION_DATA.with(|coll_data| {
-        
+
         let mut col_data= coll_data.borrow_mut().to_owned();
-        
+
         // if col_data.additional_metadata.clone().unwrap().additional_details.is_some() {
         //     return Err("property additional details already added".to_string());
         // }
@@ -237,6 +256,28 @@ fn get_collection_metadata() -> Result<CollectionMetadata, String> {
     return Ok(collection_data);
 }
 
+// for now using NFTMetadata + Collection Metadata 
+#[query] 
+fn get_collection_status() -> Result<Status, String> {
+
+    let collection_data: CollectionMetadata = COLLECTION_DATA.with(|coll_data| { 
+        coll_data.borrow().to_owned() });
+            
+    return Ok(collection_data.status);
+}
+
+
+#[query] 
+fn get_prop_data() -> Result<PropertyData, String> {
+
+    let collection_data: CollectionMetadata = COLLECTION_DATA.with(|coll_data| { 
+        coll_data.borrow().to_owned() });
+            
+    return Ok(collection_data.prop_data.unwrap());
+}
+
+
+
 // Metadata items TBD
 // for now using NFTMetadata + Collection Metadata 
 #[query] 
@@ -247,10 +288,6 @@ fn get_market_details() -> Result<MarketDetails, String> {
             
     return Ok(collection_data.additional_metadata.unwrap().market_details.unwrap());
 }
-
-// TODO add check for controller account
-// #[update]
-// fn update_collection_data() -> Result<String, String> {}
 
 // TODO update total_minted in collectionMetadata
 // #[update(guard = "allow_only_authorized_principal")] 
@@ -294,7 +331,7 @@ fn get_metadata(token_id : String) -> Result<Metadata, String> {
             return Err(String::from("NFT not found"));
         }
         let nft_data = nft_data.unwrap().to_owned();
-        
+
         let collection_data: CollectionMetadata = COLLECTION_DATA.with(|coll_data| { 
             coll_data.borrow().to_owned() });
 
@@ -305,11 +342,10 @@ fn get_metadata(token_id : String) -> Result<Metadata, String> {
                 nft_uri: nft_data.nft_uri,
                 collection_name: collection_data.name,
                 desc: collection_data.desc,
-                logo: collection_data.logo,
                 total_supply: collection_data.total_supply,
                 supply_cap: collection_data.supply_cap
             };
-            
+
             return Ok(metadata);
     }) 
 }
@@ -339,10 +375,10 @@ fn get_metadata(token_id : String) -> Result<Metadata, String> {
 
 #[query] 
 fn collection_image() -> Vec<String>{
-        
+
     let collection_data = COLLECTION_DATA.with(|coll_data| { 
         coll_data.borrow().to_owned() });
-            
+      
     collection_data.property_images
 }
 

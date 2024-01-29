@@ -16,16 +16,17 @@ type NFT_Metadata = record {
 };
 type Result = variant { Ok : CanisterIds; Err : text };
 type Result_1 = variant { Ok : principal; Err : text };
-type Result_2 = variant { Ok : vec CanisterIds; Err : text };
+type Result_2 = variant { Ok : vec principal; Err : text };
 type Result_3 = variant { Ok : vec text; Err : text };
 type Result_4 = variant { Ok : NFT_Metadata; Err : text };
 type Result_5 = variant { Ok : text; Err : text };
 service : {
   all_canister_create : (text, text) -> (Result);
   create_new_canister : () -> (Result_1);
-  get_all_canisters : () -> (Result_2) query;
+  get_all_minter_canisters : () -> (Result_2);
   grant_commit_permission : (principal, principal) -> (text);
   init_collection : (principal) -> (Result_5);
   mint_NFT : (principal, text, text) -> (Result_5);
   revoke_commit_permission : (principal, principal) -> (text);
+  filter_status : () -> (Result_2);
 }
