@@ -53,6 +53,7 @@ pub struct CollectionMetadata {
     pub property_images: Vec<String>,
     pub additional_metadata: Option<AdditionalMetadata>,
     pub status: Status,
+    pub owner: String
 }
 
 //Additional metadata

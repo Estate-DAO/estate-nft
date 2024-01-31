@@ -21,8 +21,8 @@ type AdditionalMetadata = record {
 type CollectionMetadata = record {
   status : Status;
   supply_cap : nat16;
+  owner : text;
   desc : text;
-  logo : text;
   additional_metadata : opt AdditionalMetadata;
   name : text;
   collection_id : text;
@@ -82,6 +82,7 @@ type Result_2 = variant { Ok : Metadata; Err : text };
 type Result_3 = variant { Ok : text; Err : text };
 type Result_4 = variant { Ok : Status; Err : text };
 type Result_5 = variant { Ok : PropertyData; Err : text };
+type Result_6 = variant { Ok : principal; Err : text };
 type TotalInvestmentValue = record {
   homebase_closing_fee : opt text;
   initial_mainatance_reserve : opt float32;
@@ -98,13 +99,13 @@ service : {
   get_market_details : () -> (Result_1) query;
   get_metadata : (text) -> (Result_2) query;
   update_additional_details : (AdditionalDetails) -> (Result_3);
-  init_collection : (text, text) -> (Result_3);
   update_financial_details : (FinancialDetails) -> (Result_3);
   update_market_details : (MarketDetails) -> (Result_3);
   update_prop_det : (PropDetails) -> (Result_3);
   update_doc_details : (vec vec record { text; text }) -> (Result_3);
-  mint : (text, text) -> (Result_3);
+  mint : (text, text, principal) -> (Result_3);
   get_collection_status : () -> (Result_4) query;
   update_prop_data : (PropertyData) -> (Result_3);
   get_prop_data : () -> (Result_5) query;
+  init_collection : (text, text, principal) -> (Result_3);
 }

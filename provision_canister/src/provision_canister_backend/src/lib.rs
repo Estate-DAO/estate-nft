@@ -78,7 +78,7 @@ async fn create_new_canister() -> Result<Principal, String> {
         Ok(x) => x,
         Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
     };
-    
+
     if canister_id.canister_id == Principal::anonymous() {
         return Err("error creating canister".to_string());
     } else {
@@ -240,7 +240,7 @@ async fn create_and_init_frontend_canister_with_wasm(id: Principal) -> Result<Pr
 fn grant_commit_permission(id: Principal, user_id: Principal) -> String {
     // ic_cdk::println!("Get in .. using backend={}", id.to_text());
     let res = notify(id, "authorize", (user_id,), ); 
-        
+  
     match res{
         Ok(()) => {"success".to_string()}
         Err(_) => {"error".to_string()}
@@ -251,7 +251,7 @@ fn grant_commit_permission(id: Principal, user_id: Principal) -> String {
 fn revoke_commit_permission(id: Principal, user_id: Principal) -> String {
     // ic_cdk::println!("Get in .. using backend={}", id.to_text());
     let res = notify(id, "deauthorize", (user_id,), ); 
-        
+
     match res{
         Ok(()) => {"success".to_string()}
         Err(_) => {"error".to_string()}
@@ -274,7 +274,7 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
         Ok(x) => x,
         Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
     };
-    
+
     if canister_id_1.canister_id == Principal::anonymous() {
         return Err("error creating asset canister".to_string());
     } 
@@ -296,7 +296,6 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
         include_bytes!("/home/shrey/work/new_asset/.dfx/local/canisters/new_asset_frontend/assetstorage.wasm.gz");
     
     let wasm_file = WASM.to_vec();
-
 
     // create installCodeArgument
     let install_config = InstallCodeArgument {
@@ -370,11 +369,17 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
     //remove
     let mut e:String = String::from("");
 
-    let res =  call(minter_canister, "init_collection", (name, desc, ), ).await; 
+    //todo add caller
+    let user = caller();
+
+    // let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
+
+
+    let res =  call(minter_canister, "init_collection", (name, desc, user), ).await; 
         match res{
             Ok(r) => {
                 let (res,): (Result<String, String>,) = r;
-            },
+            }, 
         Err(_) =>{e=String::from("error")}
     }
 
@@ -396,29 +401,26 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
 }
 
 //test  
-// #[update]
-// fn test_auth_user() -> Result<Vec<Principal>, String> {
+#[update]
+fn test_auth_user() -> Result<Vec<Principal>, String> {
 
-//     let caller = caller();
-//     let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
-//     let mut minter_canister_vec: Vec<Principal> = Vec::new();
-//     minter_canister_vec.push(caller);
-//     minter_canister_vec.push(user);
-   
-   
-//     return Ok(minter_canister_vec);  
+    let caller = caller();
+    let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
+    let mut minter_canister_vec: Vec<Principal> = Vec::new();
+    minter_canister_vec.push(caller);
+    minter_canister_vec.push(user);
 
-// }
+    return Ok(minter_canister_vec);  
+}
 
 #[update]
 fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
 
-    let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
-    if caller() != Principal::self_authenticating(user) {
-        return Err("unathorized user".to_string());
-    }
-    else{
-
+    // let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
+    // if caller() != Principal::self_authenticating(user) {
+    //     return Err("unathorized user".to_string());
+    // }
+    // else{
         CANISTER_STORE.with(|canister_store| {
             let canister_map = canister_store.borrow_mut();
             if canister_map.to_owned().is_empty() {
@@ -430,7 +432,7 @@ fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
             }
             return Ok(minter_canister_vec);  
         })
-    }
+    // }
 }
 
 

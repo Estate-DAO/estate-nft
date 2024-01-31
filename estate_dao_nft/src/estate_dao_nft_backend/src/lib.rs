@@ -1,5 +1,6 @@
 mod state;
 
+use candid::IDLArgs;
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
 use state::{Account, AdditionalDetails, AdditionalMetadata, CollectionMetadata, FinancialDetails, MarketDetails, Metadata, NFTMetadata, PropDetails, PropertyData, Status};
 use serde::Serialize;
@@ -12,6 +13,8 @@ use std::collections::{BTreeMap, HashMap};
 type NFTList = BTreeMap<String, NFTMetadata>;
 // todo tbd CollectionList
 type CollectionList = BTreeMap<String, CollectionMetadata>;
+type TokenOwnerMap = BTreeMap<String, Principal>;
+type UserTokensList = BTreeMap<Principal, Vec<String>>;
 
 pub type Subaccount = [u8; 32];
 pub const DEFAULT_SUBACCOUNT: &Subaccount = &[0; 32];
@@ -21,6 +24,9 @@ thread_local! {
     static COLLECTION_DATA: RefCell<CollectionMetadata> = RefCell::default();
     static COUNTER: RefCell<u16> = RefCell::new (0u16);
     static COLLECTION_ID: RefCell<String> = RefCell::new(String::default());
+    static TOKEN_OWNER: RefCell<TokenOwnerMap> = RefCell::default();
+    static TOKEN_LIST: RefCell<UserTokensList> = RefCell::default();
+
 }
 
 //collection specific data
@@ -29,6 +35,7 @@ thread_local! {
 fn init_collection(
     name: String, 
     desc: String, 
+    owner: Principal,
 ) -> Result<String, String> {
 
     COLLECTION_DATA.with(|coll_data| {
@@ -47,7 +54,8 @@ fn init_collection(
                 prop_data: None,
                 prop_details:None, 
                 additional_metadata: Some(AdditionalMetadata{additional_details:None, financial_details:None, documents:Vec::new(), market_details:None}),
-                status: Status::Upcoming
+                status: Status::Upcoming,
+                owner: Principal::to_text(&owner)
         };
     });
 
@@ -69,17 +77,21 @@ fn update_prop_det(
     COLLECTION_DATA.with(|coll_data| {
 
         let mut col_data= coll_data.borrow_mut().to_owned();
-        
-        // if col_data.prop_details.is_some() {
-        //     return Err("property details already added".to_string());
-        // }
+        let user = Principal::from_text(col_data.owner.clone()).unwrap();
+        if caller() != Principal::self_authenticating(user) {
+            return Err("unathorized user".to_string());
+        }
+        else {
+            // if col_data.prop_details.is_some() {
+            //     return Err("property details already added".to_string());
+            // }
 
-        col_data.prop_details = Some(prop_det);
+            col_data.prop_details = Some(prop_det);
 
-        *coll_data.borrow_mut() = col_data;
+            *coll_data.borrow_mut() = col_data;
 
-        return Ok("property details added succesfully".to_string());
-
+            return Ok("property details added succesfully".to_string());
+        }
     })
 }
 
@@ -93,21 +105,25 @@ fn update_prop_data(
     COLLECTION_DATA.with(|coll_data| {
 
         let mut col_data= coll_data.borrow_mut().to_owned();
-        
-        // if col_data.prop_details.is_some() {
-        //     return Err("property details already added".to_string());
-        // }
+        let user = Principal::from_text(col_data.owner.clone()).unwrap();
+        if caller() != Principal::self_authenticating(user) {
+            return Err("unathorized user".to_string());
+        }
+        else {
+            // if col_data.prop_details.is_some() {
+            //     return Err("property details already added".to_string());
+            // }
 
-        col_data.prop_data = Some(prop_data);
+            col_data.prop_data = Some(prop_data);
 
-        *coll_data.borrow_mut() = col_data;
+            *coll_data.borrow_mut() = col_data;
 
-        //remove
-        // let collection_data_test = COLLECTION_DATA.with(|coll_data| { 
-        //     coll_data.borrow().to_owned() }); 
+            //remove
+            // let collection_data_test = COLLECTION_DATA.with(|coll_data| { 
+            //     coll_data.borrow().to_owned() }); 
 
-        return Ok("property data added succesfully".to_string());
-
+            return Ok("property data added succesfully".to_string());
+        }
     })
 }
 
@@ -123,17 +139,23 @@ fn update_market_details(
 
         let mut col_data= coll_data.borrow_mut().to_owned();
         
-        // if col_data.additional_metadata.clone().unwrap().market_details.is_some() {
-        //     return Err("property market details already added".to_string());
-        // }
-        let mut add_meta = col_data.additional_metadata.unwrap();
+        let user = Principal::from_text(col_data.owner.clone()).unwrap();
+        if caller() != Principal::self_authenticating(user) {
+            return Err("unathorized user".to_string());
+        }
+        else {
+            // if col_data.additional_metadata.clone().unwrap().market_details.is_some() {
+            //     return Err("property market details already added".to_string());
+            // }
+            let mut add_meta = col_data.additional_metadata.unwrap();
 
-        add_meta.market_details = Some(market_det);
-        col_data.additional_metadata = Some(add_meta);
+            add_meta.market_details = Some(market_det);
+            col_data.additional_metadata = Some(add_meta);
 
-        *coll_data.borrow_mut() = col_data;
+            *coll_data.borrow_mut() = col_data;
 
-        return Ok("market details added succesfully".to_string());
+            return Ok("market details added succesfully".to_string());
+        }
     })
 }
 
@@ -147,18 +169,23 @@ fn update_financial_details(
     COLLECTION_DATA.with(|coll_data| {
         
         let mut col_data= coll_data.borrow_mut().to_owned();
-        
+        let user = Principal::from_text(col_data.owner.clone()).unwrap();
+        if caller() != Principal::self_authenticating(user) {
+            return Err("unathorized user".to_string());
+        }
+        else {
         // if col_data.additional_metadata.clone().unwrap().financial_details.is_some() {
         //     return Err("property financial details already added".to_string());
         // }
-        let mut add_meta = col_data.additional_metadata.unwrap();
+            let mut add_meta = col_data.additional_metadata.unwrap();
 
-        add_meta.financial_details = Some(financial_det);
-        col_data.additional_metadata = Some(add_meta);
+            add_meta.financial_details = Some(financial_det);
+            col_data.additional_metadata = Some(add_meta);
 
-        *coll_data.borrow_mut() = col_data;
+            *coll_data.borrow_mut() = col_data;
 
-        return Ok("financial details added succesfully".to_string());
+            return Ok("financial details added succesfully".to_string());
+        }
     })
 }
 
@@ -177,14 +204,20 @@ fn update_additional_details(
         //     return Err("property additional details already added".to_string());
         // }
 
-        let mut add_meta = col_data.additional_metadata.unwrap();
+        let user = Principal::from_text(col_data.owner.clone()).unwrap();
+        if caller() != Principal::self_authenticating(user) {
+            return Err("unathorized user".to_string());
+        }
+        else {
+            let mut add_meta = col_data.additional_metadata.unwrap();
 
-        add_meta.additional_details = Some(add_det);
-        col_data.additional_metadata = Some(add_meta);
+            add_meta.additional_details = Some(add_det);
+            col_data.additional_metadata = Some(add_meta);
 
-        *coll_data.borrow_mut() = col_data;
+            *coll_data.borrow_mut() = col_data;
 
-        return Ok("additional details succesfully".to_string());
+            return Ok("additional details succesfully".to_string());
+        }
     })
 }
 
@@ -197,7 +230,7 @@ fn init_additional_metadata(
 ) -> Result<String, String> {
 
     COLLECTION_DATA.with(|coll_data| {
-    
+
         let mut col_data= coll_data.borrow_mut().to_owned();
 
         if col_data.additional_metadata.is_some() {
@@ -232,15 +265,22 @@ fn update_doc_details(
     COLLECTION_DATA.with(|coll_data| {
 
         let mut col_data= coll_data.borrow_mut().to_owned();
-        
-        let mut add_meta = col_data.additional_metadata.unwrap();
 
-        add_meta.documents = doc_details;
-        col_data.additional_metadata = Some(add_meta);
+        let user = Principal::from_text(col_data.owner.clone()).unwrap();
+        if caller() != Principal::self_authenticating(user) {
+            return Err("unathorized user".to_string());
+        }
+        else {
+            
+            let mut add_meta = col_data.additional_metadata.unwrap();
 
-        *coll_data.borrow_mut() = col_data;
+            add_meta.documents = doc_details;
+            col_data.additional_metadata = Some(add_meta);
 
-        return Ok("Documents added succesfully".to_string());
+            *coll_data.borrow_mut() = col_data;
+
+            return Ok("Documents added succesfully".to_string());
+        }
     })
 }
 
@@ -277,7 +317,6 @@ fn get_prop_data() -> Result<PropertyData, String> {
 }
 
 
-
 // Metadata items TBD
 // for now using NFTMetadata + Collection Metadata 
 #[query] 
@@ -292,27 +331,37 @@ fn get_market_details() -> Result<MarketDetails, String> {
 // TODO update total_minted in collectionMetadata
 // #[update(guard = "allow_only_authorized_principal")] 
 #[update] 
-fn mint(symbol: String, uri: String) -> Result<String, String> {
+fn mint(symbol: String, uri: String, owner: Principal) -> Result<String, String> {
 
     let counter = COUNTER.with(|counter| {
-
         *counter.borrow_mut() += 1;
+        *counter.borrow()
+    });
 
-        let id = *counter.borrow();
+    let collection_id = COLLECTION_ID.with(|coll_id| (
+            *coll_id.borrow()).clone());
 
-        let collection_id = COLLECTION_ID.with(|coll_id| (*coll_id.borrow()).clone());
+    COLLECTION_DATA.with(|coll_data| {
+        let mut col_data= coll_data.borrow_mut().to_owned();
+        col_data.total_supply = counter;
+    });
 
-        NFT_STORE.with(|nft_list| {
-            nft_list.borrow_mut().insert(
-                id.clone().to_string(),
-                NFTMetadata{
-                    collection_id,
-                    nft_symbol: symbol,
-                    nft_token_id: id.to_string(),
-                    nft_uri: uri
-                }
-            )
-        });
+    TOKEN_OWNER.with(|token_owner_map| {
+        let mut owner_list =  token_owner_map.borrow_mut();
+        owner_list.insert(counter.clone().to_string(), owner.clone());
+    });    
+    
+
+    NFT_STORE.with(|nft_list| {
+        nft_list.borrow_mut().insert(
+            counter.clone().to_string(),
+            NFTMetadata{
+                collection_id,
+                nft_symbol: symbol,
+                nft_token_id: counter.to_string(),
+                nft_uri: uri
+            }
+        )
     });
 
     return Ok("NFT minted succesfully".to_string());
@@ -349,6 +398,9 @@ fn get_metadata(token_id : String) -> Result<Metadata, String> {
             return Ok(metadata);
     }) 
 }
+
+
+
 
 // #[update(guard = "allow_only_authorized_principal")] 
 // fn add_collection_image(asset_canister_id: String, image: String) -> Result<CollectionMetadata, String> {
