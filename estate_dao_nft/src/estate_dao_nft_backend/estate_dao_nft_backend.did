@@ -54,6 +54,7 @@ type Metadata = record {
   nft_symbol : text;
 };
 type MonthlyGrossRents = record {
+  total_monthly_cost : opt float32;
   llc_monthly_franchise_tax : opt float32;
   monthly_cash_flow : opt float32;
   property_insurance : opt float32;
@@ -69,11 +70,11 @@ type PropertyData = record {
   bath : nat16 
 };
 type PropDetails = record {
-  year_built : opt text;
-  purchase_price : opt text;
-  yields : opt text;
-  projected_rent : opt text;
-  min_investment : opt text;
+  year_built : opt nat16;
+  purchase_price : opt nat16;
+  yields : opt float32;
+  projected_rent : opt nat16;
+  min_investment : opt float32;
 };
 type Status = variant { Ended; Live; Upcoming };
 type Result = variant { Ok : CollectionMetadata; Err : text };
@@ -108,4 +109,5 @@ service : {
   update_prop_data : (PropertyData) -> (Result_3);
   get_prop_data : () -> (Result_5) query;
   init_collection : (text, text, principal) -> (Result_3);
+  get_owner_of_NFT : (text) -> (Result_6);
 }

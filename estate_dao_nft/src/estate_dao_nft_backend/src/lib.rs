@@ -77,11 +77,12 @@ fn update_prop_det(
     COLLECTION_DATA.with(|coll_data| {
 
         let mut col_data= coll_data.borrow_mut().to_owned();
-        let user = Principal::from_text(col_data.owner.clone()).unwrap();
-        if caller() != Principal::self_authenticating(user) {
-            return Err("unathorized user".to_string());
-        }
-        else {
+
+        // let user = Principal::from_text(col_data.owner.clone()).unwrap();
+        // if caller() != Principal::self_authenticating(user) {
+        //     return Err("unathorized user".to_string());
+        // }
+        // else {
             // if col_data.prop_details.is_some() {
             //     return Err("property details already added".to_string());
             // }
@@ -91,7 +92,7 @@ fn update_prop_det(
             *coll_data.borrow_mut() = col_data;
 
             return Ok("property details added succesfully".to_string());
-        }
+        // }
     })
 }
 
@@ -105,11 +106,11 @@ fn update_prop_data(
     COLLECTION_DATA.with(|coll_data| {
 
         let mut col_data= coll_data.borrow_mut().to_owned();
-        let user = Principal::from_text(col_data.owner.clone()).unwrap();
-        if caller() != Principal::self_authenticating(user) {
-            return Err("unathorized user".to_string());
-        }
-        else {
+        // let user = Principal::from_text(col_data.owner.clone()).unwrap();
+        // if caller() != Principal::self_authenticating(user) {
+        //     return Err("unathorized user".to_string());
+        // }
+        // else {
             // if col_data.prop_details.is_some() {
             //     return Err("property details already added".to_string());
             // }
@@ -123,7 +124,7 @@ fn update_prop_data(
             //     coll_data.borrow().to_owned() }); 
 
             return Ok("property data added succesfully".to_string());
-        }
+        // }
     })
 }
 
@@ -139,11 +140,11 @@ fn update_market_details(
 
         let mut col_data= coll_data.borrow_mut().to_owned();
         
-        let user = Principal::from_text(col_data.owner.clone()).unwrap();
-        if caller() != Principal::self_authenticating(user) {
-            return Err("unathorized user".to_string());
-        }
-        else {
+        // let user = Principal::from_text(col_data.owner.clone()).unwrap();
+        // if caller() != Principal::self_authenticating(user) {
+        //     return Err("unathorized user".to_string());
+        // }
+        // else {
             // if col_data.additional_metadata.clone().unwrap().market_details.is_some() {
             //     return Err("property market details already added".to_string());
             // }
@@ -155,7 +156,7 @@ fn update_market_details(
             *coll_data.borrow_mut() = col_data;
 
             return Ok("market details added succesfully".to_string());
-        }
+        // }
     })
 }
 
@@ -169,11 +170,12 @@ fn update_financial_details(
     COLLECTION_DATA.with(|coll_data| {
         
         let mut col_data= coll_data.borrow_mut().to_owned();
-        let user = Principal::from_text(col_data.owner.clone()).unwrap();
-        if caller() != Principal::self_authenticating(user) {
-            return Err("unathorized user".to_string());
-        }
-        else {
+
+        // let user = Principal::from_text(col_data.owner.clone()).unwrap();
+        // if caller() != Principal::self_authenticating(user) {
+        //     return Err("unathorized user".to_string());
+        // }
+        // else {
         // if col_data.additional_metadata.clone().unwrap().financial_details.is_some() {
         //     return Err("property financial details already added".to_string());
         // }
@@ -185,7 +187,7 @@ fn update_financial_details(
             *coll_data.borrow_mut() = col_data;
 
             return Ok("financial details added succesfully".to_string());
-        }
+        // }
     })
 }
 
@@ -204,11 +206,11 @@ fn update_additional_details(
         //     return Err("property additional details already added".to_string());
         // }
 
-        let user = Principal::from_text(col_data.owner.clone()).unwrap();
-        if caller() != Principal::self_authenticating(user) {
-            return Err("unathorized user".to_string());
-        }
-        else {
+        // let user = Principal::from_text(col_data.owner.clone()).unwrap();
+        // if caller() != Principal::self_authenticating(user) {
+        //     return Err("unathorized user".to_string());
+        // }
+        // else {
             let mut add_meta = col_data.additional_metadata.unwrap();
 
             add_meta.additional_details = Some(add_det);
@@ -217,7 +219,7 @@ fn update_additional_details(
             *coll_data.borrow_mut() = col_data;
 
             return Ok("additional details succesfully".to_string());
-        }
+        // }
     })
 }
 
@@ -266,11 +268,11 @@ fn update_doc_details(
 
         let mut col_data= coll_data.borrow_mut().to_owned();
 
-        let user = Principal::from_text(col_data.owner.clone()).unwrap();
-        if caller() != Principal::self_authenticating(user) {
-            return Err("unathorized user".to_string());
-        }
-        else {
+        // let user = Principal::from_text(col_data.owner.clone()).unwrap();
+        // if caller() != Principal::self_authenticating(user) {
+        //     return Err("unathorized user".to_string());
+        // }
+        // else {
             
             let mut add_meta = col_data.additional_metadata.unwrap();
 
@@ -280,7 +282,7 @@ fn update_doc_details(
             *coll_data.borrow_mut() = col_data;
 
             return Ok("Documents added succesfully".to_string());
-        }
+        // }
     })
 }
 
@@ -351,6 +353,33 @@ fn mint(symbol: String, uri: String, owner: Principal) -> Result<String, String>
         owner_list.insert(counter.clone().to_string(), owner.clone());
     });    
     
+    TOKEN_LIST.with(|user_token_list| {
+        let binding = user_token_list.borrow_mut();
+        let token_list =  binding.get(&owner);
+        // token_list.insert(counter.clone().to_string(), owner.clone())
+        match token_list {
+            Some(_v) => {
+    
+                let mut token_list_map =  user_token_list.borrow_mut().to_owned();
+                let mut list: Vec<String> = Vec::new();
+                token_list_map.get(&owner).unwrap().clone_into(&mut list); 
+                list.push(counter.clone().to_string());
+                token_list_map.insert(owner.clone(), list);
+    
+                // list.push(counter.clone().to_string());
+                // token_list_map.insert(owner.clone(), *list);
+    
+                // let mut list = token_list.unwrap(); 
+                // token_list.unwrap().push(counter.clone().to_string());
+            }
+            _ => {
+                let mut token_list =  user_token_list.borrow_mut();
+                let mut token_vec: Vec<String> = Vec::new();
+                token_vec.push(counter.clone().to_string());
+                token_list.insert(owner.clone(), token_vec);
+            }
+        };
+    });
 
     NFT_STORE.with(|nft_list| {
         nft_list.borrow_mut().insert(

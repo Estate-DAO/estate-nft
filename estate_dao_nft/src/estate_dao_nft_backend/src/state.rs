@@ -66,18 +66,6 @@ pub struct AdditionalMetadata {
     pub market_details: Option<MarketDetails>,
 }
 
-// //Documents metadata
-// //Royalty structure is not fixed yet in ICRC7
-// #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
-// pub struct AdditionalDocuments {
-//     pub document1: String,
-//     pub document2: String,
-//     pub document3: String, 
-//     pub document4: String,
-//     pub document5: String,
-//     pub document6: String,
-// }
-
 //Documents metadata
 //Royalty structure is not fixed yet in ICRC7
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
@@ -112,6 +100,7 @@ pub struct MonthlyGrossRents {
     pub property_taxes: Option<f32>,
     pub property_insurance: Option<f32>,
     pub expense_to_income_ratio: Option<f32>,
+    pub total_monthly_cost: Option<f32>,
     pub monthly_cash_flow: Option<f32>,
 }
 
@@ -164,11 +153,11 @@ pub struct Metadata {
 
 #[derive(Clone, Debug, CandidType, Default, Deserialize, Serialize)]
 pub struct PropDetails {
-    pub purchase_price: Option<String>,
-    pub yields: Option<String>,
-    pub projected_rent: Option<String>,     
-    pub min_investment: Option<String>,     
-    pub year_built: Option<String>
+    pub purchase_price: Option<u16>,
+    pub yields: Option<f32>,
+    pub projected_rent: Option<u16>,     
+    pub min_investment: Option<f32>,     
+    pub year_built: Option<u16>
 }
 
 // estate_dao_nft_backend

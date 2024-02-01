@@ -87,45 +87,6 @@ async fn create_new_canister() -> Result<Principal, String> {
     
 }
 
-#[update]
-async fn create_and_init_canister_with_wasm(id: Principal) -> Result<Principal, String>  {
-
-            println!("New canister created with ID: {:?}", id);
-
-            // let principal_id = new_canister_id.0.canister_id;
-            let principal_id = id;
-
-            pub const WASM: &[u8] =
-                include_bytes!("//home/shrey/estate-nft/estate_dao_nft/target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm.gz");
-                // include_bytes!("../../../canister_dummy/target/wasm32-unknown-unknown/release/canister_dummy_backend.wasm");
-            
-            let wasm_file = WASM.to_vec();
-
-            // create installCodeArgument
-            let install_config = InstallCodeArgument {
-                mode: CanisterInstallMode::Install,
-                wasm_module: wasm_file,
-                canister_id: principal_id,
-                arg: vec![],
-            };
-            // Install the Wasm code into the new canister
-            let install_result = install_code(install_config).await;
-
-            match install_result {
-                Ok(_) => {
-                    println!("Wasm code installed successfully!");
-                    return Ok(principal_id);
-                    // Continue with initialization or other tasks
-                }
-                Err(err) => {
-                    eprintln!("Error installing code: {:?}", err);
-                    return Err(err.1);
-
-                }
-            }
-
-    // }
-}
 
 #[query(composite = true)]
 async fn call_fun(id: Principal) -> String {
@@ -186,55 +147,6 @@ async fn get_token_metadata(id: Principal, token_id: String) -> Result<NFT_Metad
     }
 }
 
-
-#[update]
-async fn create_and_init_frontend_canister_with_wasm(id: Principal) -> Result<Principal, String>  {
-
-            println!("New canister created with ID: {:?}", id);
-            let install_arg = Some(AssetCanisterArgs::InitArgs);
-
-            let serialized_bytes: Vec<u8> = match install_arg {
-                // Some(install_args) => serde_json::to_string(&install_arg).unwrap().as_bytes().to_vec(),
-                Some(install_args) =>candid::encode_args((install_args,)).expect("Failed to encode arguments"),
-
-                // Some(AssetCanisterArgs::UpgradeArgs) => vec![],
-                None => vec![],
-            };
-
-            // let principal_id = new_canister_id.0.canister_id;
-            let principal_id = id;
-
-            pub const WASM: &[u8] =
-                include_bytes!("/home/shrey/work/estate_dao_nft/estate_dao_nft/.dfx/local/canisters/estate_dao_nft_frontend/assetstorage.wasm.gz");
-            
-            let wasm_file = WASM.to_vec();
-
-
-            // create installCodeArgument
-            let install_config = InstallCodeArgument {
-                mode: CanisterInstallMode::Install,
-                wasm_module: wasm_file,
-                canister_id: principal_id,
-                arg: (serialized_bytes),
-                // arg: {vec![]},
-            };
-            // Install the Wasm code into the new canister
-            let install_result = install_code(install_config).await;
-
-            match install_result {
-                Ok(_) => {
-                    println!("Wasm code installed successfully!");
-                    return Ok(principal_id);
-                    // Continue with initialization or other tasks
-                }
-                Err(err) => {
-                    eprintln!("Error installing code: {:?}", err);
-                    return Err(err.1);
-                }
-            }
-
-    // }
-}
 
 #[update]
 fn grant_commit_permission(id: Principal, user_id: Principal) -> String {
