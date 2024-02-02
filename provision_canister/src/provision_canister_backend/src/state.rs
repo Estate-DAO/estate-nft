@@ -18,15 +18,23 @@ pub struct RoyaltyData{
     pub royalty_account: Account,
 }
 
+#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
+pub struct PropertyData{
+    pub bed: u16,
+    pub bath: u16,
+    pub area: u16,
+}
+
 impl Default for Status {
     fn default() -> Self {
-        Status::Upcoming
+        Status::Draft
     }
 }
 
 // const default_status: Status = Status::default();
-#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize, Serialize)]
 pub enum Status{
+    Draft,
     Upcoming,
     Live,
     Ended,
@@ -39,7 +47,6 @@ pub struct CollectionMetadata {
     pub collection_id: String,
     pub name: String,
     pub desc: String,
-    pub logo: String, //collection logo 
     pub total_supply: u16,
     pub supply_cap: u16,
     pub prop_details: Option<PropDetails>,
@@ -47,6 +54,7 @@ pub struct CollectionMetadata {
     pub property_images: Vec<String>,
     pub additional_metadata: Option<AdditionalMetadata>,
     pub status: Status,
+    pub owner: String
 }
 
 //Additional metadata
@@ -58,18 +66,6 @@ pub struct AdditionalMetadata {
     pub documents: Vec<HashMap<String, String>>,
     pub market_details: Option<MarketDetails>,
 }
-
-// //Documents metadata
-// //Royalty structure is not fixed yet in ICRC7
-// #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
-// pub struct AdditionalDocuments {
-//     pub document1: String,
-//     pub document2: String,
-//     pub document3: String, 
-//     pub document4: String,
-//     pub document5: String,
-//     pub document6: String,
-// }
 
 //Documents metadata
 //Royalty structure is not fixed yet in ICRC7
@@ -105,6 +101,7 @@ pub struct MonthlyGrossRents {
     pub property_taxes: Option<f32>,
     pub property_insurance: Option<f32>,
     pub expense_to_income_ratio: Option<f32>,
+    pub total_monthly_cost: Option<f32>,
     pub monthly_cash_flow: Option<f32>,
 }
 
@@ -150,7 +147,6 @@ pub struct Metadata {
     pub nft_uri: String, //image   
     pub collection_name: String,
     pub desc: String,
-    pub logo: String, //collection logo 
     // pub royalty: RoyaltyData,
     pub total_supply: u16,
     pub supply_cap: u16,
@@ -158,18 +154,11 @@ pub struct Metadata {
 
 #[derive(Clone, Debug, CandidType, Default, Deserialize, Serialize)]
 pub struct PropDetails {
-    pub purchase_price: Option<String>,
-    pub yields: Option<String>,
-    pub projected_rent: Option<String>,     
-    pub min_investment: Option<String>,     
-    pub year_built: Option<String>
-}
-
-#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
-pub struct PropertyData{
-    pub bed: u16,
-    pub bath: u16,
-    pub area: u16,
+    pub purchase_price: Option<u16>,
+    pub yields: Option<f32>,
+    pub projected_rent: Option<u16>,     
+    pub min_investment: Option<f32>,     
+    pub year_built: Option<u16>
 }
 
 // estate_dao_nft_backend

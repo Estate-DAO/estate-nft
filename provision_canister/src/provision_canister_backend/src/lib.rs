@@ -10,7 +10,7 @@ use std::fs::{read, Metadata};
 use serde::Serialize;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use state::{CollectionMetadata, Status, PropertyData};
+use state::{CollectionMetadata, PropDetails, PropertyData, Status};
 
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
@@ -47,6 +47,14 @@ thread_local! {
     static CANISTER_STORE: RefCell<CanisterStore> = RefCell::default();
 }
 
+#[derive(thiserror::Error, Debug)]  
+enum ProvisionError {
+    #[error("minter canister not initalized")]
+    MinterCanisterNotInitialized(),
+    #[error("Invalid data: {0}")]
+    InvalidData(String),
+}
+
 // collection+ NFT metadata
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct NFT_Metadata {
@@ -56,7 +64,6 @@ pub struct NFT_Metadata {
     pub nft_uri: String, //image   
     pub collection_name: String,
     pub desc: String,
-    pub logo: String, //collection logo 
     pub royalty_percent: u16,
     pub total_supply: u16,
     pub supply_cap: u16,
@@ -98,42 +105,6 @@ async fn call_fun(id: Principal) -> String {
         Err(_) => "dummy".to_string()
     }
 }
-
-// calls init collection function of minter to initialize collection metadata
-#[update]
-async fn init_collection(id: Principal) -> Result<String, String> {
-    let res =  call(id, "init_collection", (), ).await; 
-        match res{
-            Ok(r) => {
-                let (res,): (Result<String, String>,) = r;
-                res
-            },
-        Err(_) => Err("Error initializing collection data".to_string())
-    }
-}
-
-
-#[update]
-async fn mint_NFT(id: Principal, symbol: String, uri: String) -> Result<String, String> {
-    
-    let canister_id_data = CANISTER_STORE.with(|canister_store| canister_store.borrow().get(&id).cloned());
-    if canister_id_data.is_none() {
-        return Err("Invalid collection".to_string());
-    }
-    let asset_can_id = canister_id_data.unwrap().asset_canister;
-    let image_uri = "https://".to_string() + &asset_can_id.to_text() + "/" + &uri;
-
-    
-    let res =  call(id, "mint", (symbol, image_uri,), ).await; 
-        match res{
-            Ok(r) => {
-                let (res,): (Result<String, String>,) = r;
-                res
-            },
-        Err(_) => Err("Error: minting failed ".to_string())
-    }
-}
-
 
 #[update]
 async fn get_token_metadata(id: Principal, token_id: String) -> Result<NFT_Metadata, String> {
@@ -287,7 +258,7 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
     // let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
 
 
-    let res =  call(minter_canister, "init_collection", (name, desc, user), ).await; 
+    let res =  call(minter_canister, "init_collection", (name, desc, user.clone()), ).await; 
         match res{
             Ok(r) => {
                 let (res,): (Result<String, String>,) = r;
@@ -300,8 +271,9 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
     }
 
     let canister_id_data = CanisterIds{
-        asset_canister: asset_canister_id,
+        asset_canister: user,
         minter_canister
+        // minter_canister: user
     };
 
     CANISTER_STORE.with(|canister_store| {
@@ -314,13 +286,23 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
 
 //test  
 #[update]
-fn test_auth_user() -> Result<Vec<Principal>, String> {
+async fn test_auth_user() -> Result<Vec<Principal>, String> {
 
     let caller = caller();
-    let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
     let mut minter_canister_vec: Vec<Principal> = Vec::new();
     minter_canister_vec.push(caller);
-    minter_canister_vec.push(user);
+
+    // let res =  call(id, "get_collection_metadata", (), ).await; 
+    // match res{
+    //         Ok(r) => {
+    //             let (res,): (Result<CollectionMetadata, String>,) = r;
+    //             let prop_owner = res.unwrap().owner;
+    //             let prop_owner_principal = Principal::from_text(prop_owner).unwrap();
+                
+    //             minter_canister_vec.push(prop_owner_principal);
+    //         },
+    //     Err(e) => {}
+    // }
 
     return Ok(minter_canister_vec);  
 }
@@ -328,23 +310,17 @@ fn test_auth_user() -> Result<Vec<Principal>, String> {
 #[update]
 fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
 
-    // let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
-    // if caller() != Principal::self_authenticating(user) {
-    //     return Err("unathorized user".to_string());
-    // }
-    // else{
-        CANISTER_STORE.with(|canister_store| {
-            let canister_map = canister_store.borrow_mut();
-            if canister_map.to_owned().is_empty() {
-                return Err("Empty Canister List".to_string());
-            }
-            let mut minter_canister_vec: Vec<Principal> = Vec::new();
-            for (_key, value) in canister_map.to_owned().iter() {
-                minter_canister_vec.push(value.to_owned().minter_canister);
-            }
-            return Ok(minter_canister_vec);  
-        })
-    // }
+    CANISTER_STORE.with(|canister_store| {
+        let canister_map = canister_store.borrow_mut();
+        if canister_map.to_owned().is_empty() {
+            return Err("Empty Canister List".to_string());
+        }
+        let mut minter_canister_vec: Vec<Principal> = Vec::new();
+        for (_key, value) in canister_map.to_owned().iter() {
+            minter_canister_vec.push(value.to_owned().minter_canister);
+        }
+        return Ok(minter_canister_vec);  
+    })
 }
 
 
@@ -423,61 +399,39 @@ fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
 // }
 
 #[update]
-async fn filter_status() -> Result<Vec<Principal>, String> {
+async fn filter_status(stat: Status) -> Result<Vec<Principal>, String> {
 
-    let collection_list = get_all_minter_canisters().unwrap();
-    let mut filtered_list:Vec<Principal> = Vec::new();
+    let collection_list = get_all_minter_canisters();
+    match collection_list {
+        Ok(col_list) => {
+            let mut filtered_list:Vec<Principal> = Vec::new();
 
-    for col in collection_list{
-        let result =  call(col, "get_collection_status", (), ).await; 
-
-        match result{
-            Ok(r) => {
-                let (res,): (Result<Status, String>,) = r;
-                match res {
-                    Ok(s) => match s{
-                        Status::Upcoming=>{filtered_list.push(col)}
-                        Status::Live => todo!(),
-                        Status::Ended => todo!(),}
-                    Err(_) => return Err("Error fetching collection status".to_string())
+            for col in col_list{
+                let result =  call(col, "get_collection_status", (), ).await; 
+        
+                match result{
+                    Ok(r) => {
+                        let (res,): (Result<Status, String>,) = r;
+                        match res {
+                            Ok(s) => {
+                                if s == stat{
+                                    filtered_list.push(col);
+                                }
+                                else{
+                                    continue;
+                                }
+                            }
+                            Err(_) =>{ return Err("Error fetching collection status".to_string())}
+                        }
+                    },
+                Err(_) => return Err("Error fetching collection data call".to_string())
                 }
-            },
-        Err(_) => return Err("Error fetching collection data call".to_string())
+            }
+            return Ok(filtered_list);
         }
+        Err(e) => return Err(e),
     }
 
-        // let coll_data_result =  call(col, "get_collection_metadata", ()).await; 
-        // match coll_data_result{
-        //     Ok(r) => {
-        //         let (res,): (Result<CollectionMetadata, String>,) = r;
-        //         // let coll_data: CollectionMetadata = coll_data_result.unwrap();
-        //         match res {
-        //             Ok(_) => match res.unwrap().status{
-        //                 Status::Upcoming=>{filtered_list.push(col)}
-        //                 Status::Live => todo!(),
-        //                 Status::Ended => todo!(),}
-        //             Err(_) => println!("dd")
-        //         }
-        //     },
-        //     Err(_) => println!("dd")
-        // };
-
-        // let coll_data: CollectionMetadata = coll_data_result.unwrap();
-        // match coll_data.status{
-        //     Status::Upcoming => {filtered_list.push(col)},
-        //     _ => println!("")
-        // }
-    // }
-    //todo loop
-
-        // let mut add_meta = col_data.additional_metadata.unwrap();
-        
-        // add_meta.documents = doc_details;
-        // col_data.additional_metadata = Some(add_meta);
-
-        // *co in l_data.borrow_mut() = col_data;
-
-        return Ok(filtered_list);
 }
 
 #[query]
@@ -492,5 +446,32 @@ async fn get_collection_images(id: Principal) -> Result<Vec<String>, String> {
     }
 }
  
+
+// calls init collection function of minter to initialize collection metadata
+#[update]
+async fn call_update_prop(id: Principal, prop_det: PropDetails) -> Result<String, String> {
+    let res =  call(id, "update_prop_det", (prop_det,), ).await; 
+        match res{
+            Ok(r) => {
+                let (res,): (Result<String, String>,) = r;
+                res
+            },
+        Err(e) => Err(e.1)
+    }
+    
+}
+
+// #[update]
+// async fn call_get_metadata(id: Principal) -> Result<CollectionMetadata, String> {
+//     let res =  call(id, "get_collection_metadata", (), ).await; 
+//         match res{
+//             Ok(r) => {
+//                 let (res,): (Result<CollectionMetadata, String>,) = r;
+//                 res
+//             },
+//         Err(e) => Err(e.1)
+//     }
+// }
+
 // Enable Candid export
 ic_cdk::export_candid!();

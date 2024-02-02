@@ -6,7 +6,6 @@ type NFT_Metadata = record {
   supply_cap : nat16;
   nft_token_id : text;
   desc : text;
-  logo : text;
   collection_id : text;
   collection_name : text;
   royalty_percent : nat16;
@@ -14,19 +13,27 @@ type NFT_Metadata = record {
   total_supply : nat16;
   nft_symbol : text;
 };
+type PropDetails = record {
+  year_built : opt nat16;
+  purchase_price : opt nat16;
+  yields : opt float32;
+  projected_rent : opt nat16;
+  min_investment : opt float32;
+};
 type Result = variant { Ok : CanisterIds; Err : text };
 type Result_1 = variant { Ok : principal; Err : text };
 type Result_2 = variant { Ok : vec principal; Err : text };
 type Result_3 = variant { Ok : vec text; Err : text };
 type Result_4 = variant { Ok : NFT_Metadata; Err : text };
 type Result_5 = variant { Ok : text; Err : text };
+type Status = variant { Draft; Ended; Live; Upcoming };
 service : {
   all_canister_create : (text, text) -> (Result);
   create_new_canister : () -> (Result_1);
   get_all_minter_canisters : () -> (Result_2);
   grant_commit_permission : (principal, principal) -> (text);
-  init_collection : (principal) -> (Result_5);
-  mint_NFT : (principal, text, text) -> (Result_5);
   revoke_commit_permission : (principal, principal) -> (text);
-  filter_status : () -> (Result_2);
+  filter_status : (Status) -> (Result_2);
+  call_update_prop : (principal, PropDetails) -> (Result_3);
+  test_auth_user: () -> (Result_2)
 }

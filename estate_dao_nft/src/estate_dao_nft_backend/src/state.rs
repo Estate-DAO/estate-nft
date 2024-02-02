@@ -20,20 +20,23 @@ pub struct RoyaltyData{
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct PropertyData{
-    pub bed: u16,
-    pub bath: u16,
-    pub area: u16,
+    pub bed: Option<u16>,
+    pub bath: Option<u16>,
+    pub area: Option<u16>,
+    pub Country: Option<String>,
+    pub State: Option<String>,
 }
 
 impl Default for Status {
     fn default() -> Self {
-        Status::Upcoming
+        Status::Draft
     }
 }
 
 // const default_status: Status = Status::default();
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub enum Status{
+    Draft,
     Upcoming,
     Live,
     Ended,
@@ -161,3 +164,5 @@ pub struct PropDetails {
 }
 
 // estate_dao_nft_backend
+
+// 2vxsx-fae
