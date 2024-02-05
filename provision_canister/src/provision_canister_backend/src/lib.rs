@@ -311,11 +311,12 @@ async fn test_auth_user() -> Result<Vec<Principal>, String> {
 fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
 
     CANISTER_STORE.with(|canister_store| {
+        let mut minter_canister_vec: Vec<Principal> = Vec::new();
+
         let canister_map = canister_store.borrow_mut();
         if canister_map.to_owned().is_empty() {
-            return Err("Empty Canister List".to_string());
+            return Ok(minter_canister_vec);
         }
-        let mut minter_canister_vec: Vec<Principal> = Vec::new();
         for (_key, value) in canister_map.to_owned().iter() {
             minter_canister_vec.push(value.to_owned().minter_canister);
         }
@@ -379,24 +380,6 @@ fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
 //     })
 // }
 
-
-// #[query]
-// async fn get_canister_list_data(id: Principal) -> Result<Vec<String>, String> {
-//     let canister_list = CANISTER_STORE.with(|canister_store| {
-//         canister_store.borrow().to_owned();
-//     });
-//         if canister_list.is_empty() {
-//             return Err("Empty Canister List".to_string());
-//         }
-//     let res =  call(id, "get_prop_data", (), ).await; 
-//         match res{
-//             Ok(r) => {
-//                 let (res,): (Result<Vec<String>, String>,) = r;
-//                 res
-//             },
-//         Err(_) => Err("Error displaying collection images".to_string())
-//     }
-// }
 
 #[update]
 async fn filter_status(stat: Status) -> Result<Vec<Principal>, String> {
