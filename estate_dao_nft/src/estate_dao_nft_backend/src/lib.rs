@@ -110,6 +110,35 @@ fn update_name_desc(
     })
 }
 
+//update status of collection
+#[update] 
+fn update_status( 
+    new_status: Status
+) -> Result<String, String> {
+
+    COLLECTION_DATA.with(|coll_data| {
+
+        let mut col_data= coll_data.borrow_mut().to_owned();
+
+        let user_res = Principal::from_text(col_data.owner.clone());
+        let user: Principal;
+        match user_res{
+            Ok(id) => {user=id;},
+            Err(e) => return Err("collection owner not initialized".to_string())
+        };
+        if caller() != user {
+            return Err("unathorized user".to_string());
+        }
+        else {
+            col_data.status = new_status;
+
+            *coll_data.borrow_mut() = col_data;
+
+            return Ok("property status updated succesfully".to_string());
+        }
+    })
+}
+
 // //collection specific data
 // // #[update(guard = "allow_only_authorized_principal")] 
 #[update] 
@@ -534,3 +563,64 @@ ic_cdk::export_candid!();
 //         Ok(())
 //     }
 // }
+
+
+
+
+
+
+// #[update]
+// fn get_owner_of_NFT(token_id: String) -> Result<Principal, String> {
+
+//     TOKEN_OWNER.with(|token_owner| {
+//         let binding = token_owner.borrow().to_owned();
+//         let token_owner_map = binding.get(&token_id);
+
+//         match token_owner_map{
+//             Some(v) => {return Ok(*token_owner_map.unwrap());}  
+//             _ => {return Err(String::from("invalid tokenid"));}
+//         }
+//     })
+
+// }
+
+
+// //candid
+// get_owner_of_NFT : (text) -> (Result_6);
+
+
+// //mint 
+
+// TOKEN_LIST.with(|user_token_list| {
+//     let binding = user_token_list.borrow_mut();
+//     let token_list =  binding.get(&owner);
+//     // token_list.insert(counter.clone().to_string(), owner.clone())
+//     match token_list {
+//         Some(_v) => {
+
+//             let mut token_list_map =  user_token_list.borrow_mut().to_owned();
+//             let mut list: Vec<String> = Vec::new();
+//             token_list_map.get(&owner).unwrap().clone_into(&mut list); 
+//             list.push(counter.clone().to_string());
+//             token_list_map.insert(owner.clone(), list);
+
+//             // list.push(counter.clone().to_string());
+//             // token_list_map.insert(owner.clone(), *list);
+
+//             // let mut list = token_list.unwrap(); 
+//             // token_list.unwrap().push(counter.clone().to_string());
+//         }
+//         _ => {
+//             let mut token_list =  user_token_list.borrow_mut();
+//             let mut token_vec: Vec<String> = Vec::new();
+//             token_vec.push(counter.clone().to_string());
+//             token_list.insert(owner.clone(), token_vec);
+//         }
+//     };
+// });
+
+
+
+// topup3: fac7768b6174dc79ed66736522a41593aadbfc0682727e75b1af258c83cf1163
+
+// default: e70c6b8d5ba1df8d1b926dbb9250e3b2390372b20373a4dd54ddb047b4a9288d

@@ -112,4 +112,5 @@ service : {
   update_name_desc : (opt text, opt text) -> (Result_6);
   update_prop_data : (PropertyData) -> (Result_6);
   update_prop_det : (PropDetails) -> (Result_6);
+  update_status : (Status) -> (Result_6);
 }
