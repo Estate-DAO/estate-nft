@@ -253,9 +253,9 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
     let mut e:String = String::from("");
 
     //todo add caller
-    let user = caller();
+    // let user = caller();
 
-    // let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
+    let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
 
 
     let res =  call(minter_canister, "init_collection", (name, desc, user.clone()), ).await; 
