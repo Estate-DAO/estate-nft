@@ -143,6 +143,9 @@ fn revoke_commit_permission(id: Principal, user_id: Principal) -> String {
 
 #[update]
 async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, String> {
+
+    let user = caller();
+
     let settings = CanisterSettings::default();
     let create_arg = CreateCanisterArgument{
         settings: Some(settings)
@@ -255,10 +258,10 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
     //todo add caller
     // let user = caller();
 
-    let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
+    // let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
 
 
-    let res =  call(minter_canister, "init_collection", (name, desc, user.clone()), ).await; 
+    let res =  call(minter_canister, "init_collection", (name, desc, user), ).await; 
         match res{
             Ok(r) => {
                 let (res,): (Result<String, String>,) = r;
@@ -271,9 +274,8 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
     }
 
     let canister_id_data = CanisterIds{
-        asset_canister: user,
+        asset_canister: asset_canister_id,
         minter_canister
-        // minter_canister: user
     };
 
     CANISTER_STORE.with(|canister_store| {
