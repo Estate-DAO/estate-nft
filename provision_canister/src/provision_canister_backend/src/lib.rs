@@ -179,7 +179,7 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
     let asset_canister_id = canister_id_1.canister_id;
 
     pub const WASM: &[u8] =
-        include_bytes!("/home/shrey/work/new_asset/.dfx/local/canisters/new_asset_frontend/assetstorage.wasm.gz");
+        include_bytes!("../assetstorage.wasm.gz");
     
     let wasm_file = WASM.to_vec();
 
@@ -228,7 +228,7 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
     let minter_canister = canister_id_2.canister_id;
 
     pub const MINTERWASM: &[u8] =
-        include_bytes!("/home/shrey/estate-nft/estate_dao_nft/target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm.gz");
+        include_bytes!("../../../../estate_dao_nft/target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm.gz");
         // include_bytes!("../../../canister_dummy/target/wasm32-unknown-unknown/release/canister_dummy_backend.wasm");
 
     let wasm_file = MINTERWASM.to_vec();
@@ -259,7 +259,6 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
     // let user = caller();
 
     // let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
-
 
     let res =  call(minter_canister, "init_collection", (name, desc, user), ).await; 
         match res{
