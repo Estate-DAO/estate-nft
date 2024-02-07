@@ -26,6 +26,8 @@ type Result_2 = variant { Ok : vec principal; Err : text };
 type Result_3 = variant { Ok : vec text; Err : text };
 type Result_4 = variant { Ok : NFT_Metadata; Err : text };
 type Result_5 = variant { Ok : text; Err : text };
+type Result_6 = variant { Ok : vec CanisterIds; Err : text };
+
 type Status = variant { Draft; Ended; Live; Upcoming };
 service : {
   all_canister_create : (text, text) -> (Result);
@@ -35,5 +37,6 @@ service : {
   revoke_commit_permission : (principal, principal) -> (text);
   filter_status : (Status) -> (Result_2);
   call_update_prop : (principal, PropDetails) -> (Result_3);
-  test_auth_user: () -> (Result_2)
+  test_auth_user: () -> (Result_2);
+  get_all_canisters : () -> (Result_6) query;
 }

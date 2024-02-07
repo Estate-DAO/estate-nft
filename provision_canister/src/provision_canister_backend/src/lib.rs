@@ -326,6 +326,23 @@ fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
     })
 }
 
+#[query]
+fn get_all_canisters() -> Result<Vec<CanisterIds>, String> {
+
+    CANISTER_STORE.with(|canister_store| {
+        let mut canister_vec: Vec<CanisterIds> = Vec::new();
+
+        let canister_map = canister_store.borrow().to_owned();
+        if canister_map.to_owned().is_empty() {
+            return Ok(canister_vec);
+        }
+        for (_key, value) in canister_map.to_owned().iter() {
+            canister_vec.push(value.to_owned());
+        }
+        return Ok(canister_vec);  
+    })
+}
+
 
 // #[update]
 // async fn get_all_canisters() -> Result<Vec<(Principal, PropertyData)>, String> {
