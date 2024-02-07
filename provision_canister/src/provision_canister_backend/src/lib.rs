@@ -1,17 +1,11 @@
-mod state;
-
-use candid::types::principal;
 use ic_cdk::api::management_canister::main::{create_canister, install_code, CreateCanisterArgument, CanisterInstallMode, InstallCodeArgument, CanisterSettings};
 use ic_cdk::api::call::{call, call_with_payment, CallResult,RejectionCode };
 use candid::{CandidType, Principal, Deserialize};
 use ic_cdk::api::management_canister::provisional::CanisterIdRecord;
 use ic_cdk::{caller, notify, query, update};
-use std::fs::{read, Metadata};
 use serde::Serialize;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use state::{CollectionMetadata, PropDetails, PropertyData, Status};
-
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct SetPermissions{
@@ -25,6 +19,15 @@ pub struct CanisterIds{
     pub asset_canister: Principal,
     pub minter_canister: Principal,
 }
+
+#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize, Serialize)]
+pub enum Status{
+    Draft,
+    Upcoming,
+    Live,
+    Ended,
+}
+
 
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
@@ -69,31 +72,6 @@ pub struct NFT_Metadata {
     pub supply_cap: u16,
 }
 
-#[update]
-async fn create_new_canister() -> Result<Principal, String> {
-    let settings = CanisterSettings::default();
-    let create_arg = CreateCanisterArgument{
-        settings: Some(settings)
-    };
-
-    let (canister_id,): (CanisterIdRecord,) = match call_with_payment(
-        Principal::management_canister(), // Management canister address
-        "create_canister", // Function name
-        (create_arg,), // Argument tuple
-        5_000_000_000_000, // Payment amount in cycles
-    ).await {
-        Ok(x) => x,
-        Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
-    };
-
-    if canister_id.canister_id == Principal::anonymous() {
-        return Err("error creating canister".to_string());
-    } else {
-        return Ok(canister_id.canister_id);
-    }
-    
-}
-
 
 #[query(composite = true)]
 async fn call_fun(id: Principal) -> String {
@@ -120,24 +98,22 @@ async fn get_token_metadata(id: Principal, token_id: String) -> Result<NFT_Metad
 
 
 #[update]
-fn grant_commit_permission(id: Principal, user_id: Principal) -> String {
-    // ic_cdk::println!("Get in .. using backend={}", id.to_text());
+fn grant_commit_permission(id: Principal, user_id: Principal) -> Result<String, String> {
     let res = notify(id, "authorize", (user_id,), ); 
   
     match res{
-        Ok(()) => {"success".to_string()}
-        Err(_) => {"error".to_string()}
+        Ok(r) => Ok("success".to_string()),
+        Err(_) => Err("Failed to authorize".to_string())
     }
 }
 
 #[update]
-fn revoke_commit_permission(id: Principal, user_id: Principal) -> String {
-    // ic_cdk::println!("Get in .. using backend={}", id.to_text());
+fn revoke_commit_permission(id: Principal, user_id: Principal) -> Result<String, String> {
     let res = notify(id, "deauthorize", (user_id,), ); 
 
     match res{
-        Ok(()) => {"success".to_string()}
-        Err(_) => {"error".to_string()}
+        Ok(r) => Ok("success".to_string()),
+        Err(_) => Err("Failed to authorize".to_string())
     }
 }
 
@@ -155,7 +131,7 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
         Principal::management_canister(), // Management canister address
         "create_canister", // Function name
         (create_arg,), // Argument tuple
-        7_000_000_000_000, // Payment amount in cycles
+        2_000_000_000_000, // Payment amount in cycles
     ).await {
         Ok(x) => x,
         Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
@@ -214,7 +190,7 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
         Principal::management_canister(), // Management canister address
         "create_canister", // Function name
         (create_arg,), // Argument tuple
-        4_000_000_000_000, // Payment amount in cycles
+        2_000_000_000_000, // Payment amount in cycles
     ).await {
         Ok(x) => x,
         Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
@@ -254,11 +230,6 @@ async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, 
 
     //remove
     let mut e:String = String::from("");
-
-    //todo add caller
-    // let user = caller();
-
-    // let user = Principal::from_text("e4j7x-faktm-kmxvh-lsmry-esxyc-roihr-ycta2-6rv22-kxxyd-jugcj-tae").unwrap(); 
 
     let res =  call(minter_canister, "init_collection", (name, desc, user), ).await; 
         match res{
@@ -342,63 +313,6 @@ fn get_all_canisters() -> Result<Vec<CanisterIds>, String> {
     })
 }
 
-
-// #[update]
-// async fn get_all_canisters() -> Result<Vec<(Principal, PropertyData)>, String> {
-
-//     CANISTER_STORE.with(|canister_store| {
-//         let canister_map = canister_store.borrow();
-//         if canister_map.to_owned().is_empty() {
-//             return Err("Empty Canister List".to_string());
-//         }
-
-//         // let mut canister_vec: Vec<CanisterIds> = Vec::new();
-//         // for (_key, value) in canister_map.to_owned().iter() {
-//         //     canister_vec.push(value.to_owned());
-//         // }
-
-//         let mut coll_vec: Vec<(Principal, PropertyData)> = Vec::new();
-
-//         //try 
-//         // let tasks: Vec<_> = 
-
-//         //     .map(|item| tokio::spawn(item.resolve()))
-//         //     .collect();
-//         // // now await them to get the resolve's to complete
-//         // for task in tasks {
-//         //     task.await.unwrap();
-//         // }
-
-//         let mut vec1 = Vec::new();
-
-//         for (_key, value) in canister_map.to_owned().iter() {
-//             let result = call(value.to_owned().minter_canister, "get_prop_data", (), ); 
-//             vec1.push(result);
-//         }
-
-//         vec1.into_iter().map(|item| tokio::spawn(item.await))
-//             .collect();
-
-//         for (_key, value) in canister_map.to_owned().iter() {
-
-//             match result{
-//                 Ok(r) => {
-//                     let (res,): (Result<PropertyData, String>,) = r;
-//                     match res{
-//                         Ok(data) => {
-//                             coll_vec.push((value.to_owned().minter_canister, data));
-//                         },
-//                         Err(_) => {return Err("error fetching struct".to_string());}
-//                     }
-//                 }
-//                 Err(_) => {return Err("error fetching".to_string());}
-//             }
-//         }
-//         return Ok(coll_vec);  
-//     })
-// }
-
-
 #[update]
 async fn filter_status(stat: Status) -> Result<Vec<Principal>, String> {
 
@@ -447,32 +361,6 @@ async fn get_collection_images(id: Principal) -> Result<Vec<String>, String> {
     }
 }
  
-
-// calls init collection function of minter to initialize collection metadata
-#[update]
-async fn call_update_prop(id: Principal, prop_det: PropDetails) -> Result<String, String> {
-    let res =  call(id, "update_prop_det", (prop_det,), ).await; 
-        match res{
-            Ok(r) => {
-                let (res,): (Result<String, String>,) = r;
-                res
-            },
-        Err(e) => Err(e.1)
-    }
-    
-}
-
-// #[update]
-// async fn call_get_metadata(id: Principal) -> Result<CollectionMetadata, String> {
-//     let res =  call(id, "get_collection_metadata", (), ).await; 
-//         match res{
-//             Ok(r) => {
-//                 let (res,): (Result<CollectionMetadata, String>,) = r;
-//                 res
-//             },
-//         Err(e) => Err(e.1)
-//     }
-// }
 
 // Enable Candid export
 ic_cdk::export_candid!();

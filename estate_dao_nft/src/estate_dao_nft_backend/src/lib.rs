@@ -2,7 +2,7 @@ mod state;
 
 use candid::IDLArgs;
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
-use state::{Account, AdditionalDetails, AdditionalMetadata, CollectionMetadata, FinancialDetails, MarketDetails, Metadata, NFTMetadata, PropDetails, PropertyData, Status};
+use state::{Account, AdditionalDetails, AdditionalMetadata, CollectionMetadata, FinancialDetails, MarketDetails, Metadata, NFTMetadata, Status};
 use serde::Serialize;
 
 use ic_cdk::{query, update, init, caller};
@@ -51,8 +51,6 @@ fn init_collection(
                 total_supply:total_minted,
                 supply_cap:10000u16,
                 property_images:Vec::new(),
-                prop_data: None,
-                prop_details:None, 
                 additional_metadata: Some(AdditionalMetadata{additional_details:None, financial_details:None, documents:Vec::new(), market_details:None}),
                 status: Status::Draft,
                 owner: Principal::to_text(&owner)
@@ -137,69 +135,6 @@ fn update_status(
         }
     })
 }
-
-// //collection specific data
-// // #[update(guard = "allow_only_authorized_principal")] 
-#[update] 
-fn update_prop_det( 
-    prop_det: PropDetails
-) -> Result<String, String> {
-
-    COLLECTION_DATA.with(|coll_data| {
-
-        let mut col_data= coll_data.borrow_mut().to_owned();
-
-        let user_res = Principal::from_text(col_data.owner.clone());
-        let user: Principal;
-        match user_res{
-            Ok(id) => {user=id;},
-            Err(e) => return Err("collection owner not initialized".to_string())
-        };        
-        // let self_auth_fn = Principal::self_authenticating(user);
-        if caller() != user {
-            return Err("unathorized user".to_string());
-        }
-        else {
-
-            col_data.prop_details = Some(prop_det);
-
-            *coll_data.borrow_mut() = col_data;
-
-            return Ok("property data added succesfully".to_string());
-        }
-    })
-}
-
-// //property data
-// // #[update(guard = "allow_only_authorized_principal")] 
-#[update] 
-fn update_prop_data( 
-    prop_data: PropertyData
-) -> Result<String, String> {
-
-    COLLECTION_DATA.with(|coll_data| {
-
-        let mut col_data= coll_data.borrow_mut().to_owned();
-
-        let user_res = Principal::from_text(col_data.owner.clone());
-        let user: Principal;
-        match user_res{
-            Ok(id) => {user=id;},
-            Err(e) => return Err("collection owner not initialized".to_string())
-        };
-        if caller() != user {
-            return Err("unathorized user".to_string());
-        }
-        else {
-            col_data.prop_data = Some(prop_data);
-
-            *coll_data.borrow_mut() = col_data;
-
-            return Ok("property data added succesfully".to_string());
-        }
-    })
-}
-
 
 // //collection specific data
 // // #[update(guard = "allow_only_authorized_principal")] 
@@ -390,24 +325,34 @@ fn get_collection_status() -> Result<Status, String> {
     return Ok(collection_data.status);
 }
 
+// market details
 #[query] 
-fn get_prop_data() -> Result<PropertyData, String > {
+fn get_market_details() -> Result<FinancialDetails, String> {
 
     let collection_data: CollectionMetadata = COLLECTION_DATA.with(|coll_data| { 
         coll_data.borrow().to_owned() });
 
-    return Ok(collection_data.prop_data.ok_or("collection not initialized")?);
+    return Ok(collection_data.additional_metadata.ok_or("collection not initialized")?.financial_details.ok_or("collection not initialized")?);
 }
 
-// Metadata items TBD
-// for now using NFTMetadata + Collection Metadata 
+// financial details
 #[query] 
-fn get_market_details() -> Result<MarketDetails, String> {
+fn get_financial_details() -> Result<MarketDetails, String> {
 
     let collection_data: CollectionMetadata = COLLECTION_DATA.with(|coll_data| { 
         coll_data.borrow().to_owned() });
 
     return Ok(collection_data.additional_metadata.ok_or("collection not initialized")?.market_details.ok_or("collection not initialized")?);
+}
+
+// additional details
+#[query] 
+fn get_additional_details() -> Result<AdditionalDetails, String> {
+
+    let collection_data: CollectionMetadata = COLLECTION_DATA.with(|coll_data| { 
+        coll_data.borrow().to_owned() });
+
+    return Ok(collection_data.additional_metadata.ok_or("collection not initialized")?.additional_details.ok_or("collection not initialized")?);
 }
 
 // TODO update total_minted in collectionMetadata
@@ -516,28 +461,19 @@ fn get_owner_of_NFT(token_id: String) -> Result<Principal, String> {
     })
 }
 
-// #[update(guard = "allow_only_authorized_principal")] 
-// fn add_collection_image(asset_canister_id: String, image: String) -> Result<CollectionMetadata, String> {
-//     let image_uri = "https://".to_owned() + &asset_canister_id + ".icp0.io/" + &image;
+#[update]
+fn add_collection_image(image: String) -> Result<String, String> {
+
+    COLLECTION_DATA.with(|coll_data| {
         
-//     // let mut collection_data: CollectionMetadata = COLLECTION_DATA.with(|coll_data| { 
-//     //     coll_data.borrow_mut().to_owned() });
+        let mut col_data= coll_data.borrow_mut().to_owned();
+        col_data.property_images.push(image);
 
-//     COLLECTION_DATA.with(|coll_data| {
-        
-//         let mut col_data= coll_data.borrow_mut().to_owned();
-//         col_data.property_images.push(image_uri);
+        *coll_data.borrow_mut() = col_data;
 
-//         *coll_data.borrow_mut() = col_data;
-
-//         //remove
-//         let collection_data_test = COLLECTION_DATA.with(|coll_data| { 
-//             coll_data.borrow().to_owned() }); 
-            
-//         return Ok(collection_data_test);
-
-//     })
-// }
+        return Ok("sucess".to_string());
+    })
+}
 
 #[query] 
 fn collection_image() -> Vec<String>{
@@ -559,64 +495,3 @@ ic_cdk::export_candid!();
 //         Ok(())
 //     }
 // }
-
-
-
-
-
-
-// #[update]
-// fn get_owner_of_NFT(token_id: String) -> Result<Principal, String> {
-
-//     TOKEN_OWNER.with(|token_owner| {
-//         let binding = token_owner.borrow().to_owned();
-//         let token_owner_map = binding.get(&token_id);
-
-//         match token_owner_map{
-//             Some(v) => {return Ok(*token_owner_map.unwrap());}  
-//             _ => {return Err(String::from("invalid tokenid"));}
-//         }
-//     })
-
-// }
-
-
-// //candid
-// get_owner_of_NFT : (text) -> (Result_6);
-
-
-// //mint 
-
-// TOKEN_LIST.with(|user_token_list| {
-//     let binding = user_token_list.borrow_mut();
-//     let token_list =  binding.get(&owner);
-//     // token_list.insert(counter.clone().to_string(), owner.clone())
-//     match token_list {
-//         Some(_v) => {
-
-//             let mut token_list_map =  user_token_list.borrow_mut().to_owned();
-//             let mut list: Vec<String> = Vec::new();
-//             token_list_map.get(&owner).unwrap().clone_into(&mut list); 
-//             list.push(counter.clone().to_string());
-//             token_list_map.insert(owner.clone(), list);
-
-//             // list.push(counter.clone().to_string());
-//             // token_list_map.insert(owner.clone(), *list);
-
-//             // let mut list = token_list.unwrap(); 
-//             // token_list.unwrap().push(counter.clone().to_string());
-//         }
-//         _ => {
-//             let mut token_list =  user_token_list.borrow_mut();
-//             let mut token_vec: Vec<String> = Vec::new();
-//             token_vec.push(counter.clone().to_string());
-//             token_list.insert(owner.clone(), token_vec);
-//         }
-//     };
-// });
-
-
-
-// topup3: fac7768b6174dc79ed66736522a41593aadbfc0682727e75b1af258c83cf1163
-
-// default: e70c6b8d5ba1df8d1b926dbb9250e3b2390372b20373a4dd54ddb047b4a9288d

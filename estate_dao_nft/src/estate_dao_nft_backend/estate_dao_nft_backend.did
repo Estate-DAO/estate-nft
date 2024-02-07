@@ -1,13 +1,13 @@
 type AdditionalDetails = record {
   year_built : opt nat32;
-  occupied : opt text;
+  occupied : opt bool;
   crime_score : opt nat32;
   monthly_rent : opt float32;
   beds : opt nat32;
   affordability : opt float32;
   last_renovation : opt text;
   square_footage : opt float32;
-  flood_zone : opt text;
+  flood_zone : opt bool;
   price_per_sq_foot : opt float32;
   baths : opt nat32;
   school_score : opt nat32;
@@ -27,19 +27,31 @@ type CollectionMetadata = record {
   name : text;
   collection_id : text;
   property_images : vec text;
-  prop_data : opt PropertyData;
-  prop_details : opt PropDetails;
   total_supply : nat16;
 };
 type FinancialDetails = record {
-  total_investement_value : opt TotalInvestmentValue;
-  total_returns : opt TotalReturns;
-  monthly_gross_rents : opt MonthlyGrossRents;
+  total_monthly_cost : opt float32;
+  monthly_cash_flow : opt float32;
+  property_insurance : opt float32;
+  investment : opt InvestmentFinancials;
+  expense_to_income_ratio : opt float32;
+  rents : opt RentFinancials;
+  returns : opt ReturnsFinancials;
+};
+type InvestmentFinancials = record {
+  initial_mainatance_reserve : opt float32;
+  underlying_asset_price : opt float32;
+  platform_closing_fee : opt float32;
+  min_investment : opt float32;
 };
 type MarketDetails = record {
+  country : opt text;
+  city : opt text;
+  description : opt text;
+  state : opt text;
   average_rent : opt nat32;
-  location : opt text;
   median_home_sale_price : opt nat32;
+  coordinates : opt text;
   annual_popullation_growth : opt nat32;
 };
 type Metadata = record {
@@ -52,65 +64,46 @@ type Metadata = record {
   total_supply : nat16;
   nft_symbol : text;
 };
-type MonthlyGrossRents = record {
-  total_monthly_cost : opt float32;
+type RentFinancials = record {
   llc_monthly_franchise_tax : opt float32;
-  monthly_cash_flow : opt float32;
-  property_insurance : opt float32;
-  expense_to_income_ratio : opt float32;
   vacancy_rate : opt float32;
   property_taxes : opt float32;
   property_managment_fee : opt float32;
+  projected_rent : opt float32;
   monthly_utiliiies : opt float32;
 };
-type PropDetails = record {
-  year_built : opt nat16;
-  purchase_price : opt nat16;
-  yields : opt float32;
-  projected_rent : opt nat16;
-  min_investment : opt float32;
-};
-type PropertyData = record {
-  bed : opt nat16;
-  State : opt text;
-  area : opt nat16;
-  bath : opt nat16;
-  Country : opt text;
-};
-type Result = variant { Ok : CollectionMetadata; Err : text };
-type Result_1 = variant { Ok : Status; Err : text };
-type Result_2 = variant { Ok : MarketDetails; Err : text };
-type Result_3 = variant { Ok : Metadata; Err : text };
-type Result_4 = variant { Ok : principal; Err : text };
-type Result_5 = variant { Ok : PropertyData; Err : text };
-type Result_6 = variant { Ok : text; Err : text };
-type Status = variant { Ended; Live; Draft; Upcoming };
-type TotalInvestmentValue = record {
-  homebase_closing_fee : opt text;
-  initial_mainatance_reserve : opt float32;
-  underlying_asset_price : opt float32;
-};
-type TotalReturns = record {
+type Result = variant { Ok : text; Err : text };
+type Result_1 = variant { Ok : AdditionalDetails; Err : text };
+type Result_2 = variant { Ok : CollectionMetadata; Err : text };
+type Result_3 = variant { Ok : Status; Err : text };
+type Result_4 = variant { Ok : MarketDetails; Err : text };
+type Result_5 = variant { Ok : FinancialDetails; Err : text };
+type Result_6 = variant { Ok : Metadata; Err : text };
+type Result_7 = variant { Ok : principal; Err : text };
+type ReturnsFinancials = record {
   average_5_year_roi : opt float32;
+  yields : opt float32;
+  total_5_year_irr : opt float32;
   projected_appreciation : opt float32;
   cap_rate : opt float32;
 };
+type Status = variant { Ended; Live; Draft; Upcoming };
 service : {
+  add_collection_image : (text) -> (Result);
   collection_image : () -> (vec text) query;
-  get_collection_metadata : () -> (Result) query;
-  get_collection_status : () -> (Result_1) query;
-  get_market_details : () -> (Result_2) query;
-  get_metadata : (text) -> (Result_3) query;
-  get_owner_of_NFT : (text) -> (Result_4);
-  get_prop_data : () -> (Result_5) query;
-  init_collection : (text, text, principal) -> (Result_6);
-  mint : (text, text, principal) -> (Result_6);
-  update_additional_details : (AdditionalDetails) -> (Result_6);
-  update_doc_details : (vec vec record { text; text }) -> (Result_6);
-  update_financial_details : (FinancialDetails) -> (Result_6);
-  update_market_details : (MarketDetails) -> (Result_6);
-  update_name_desc : (opt text, opt text) -> (Result_6);
-  update_prop_data : (PropertyData) -> (Result_6);
-  update_prop_det : (PropDetails) -> (Result_6);
-  update_status : (Status) -> (Result_6);
+  get_additional_details : () -> (Result_1) query;
+  get_collection_metadata : () -> (Result_2) query;
+  get_collection_status : () -> (Result_3) query;
+  get_financial_details : () -> (Result_4) query;
+  get_market_details : () -> (Result_5) query;
+  get_metadata : (text) -> (Result_6) query;
+  get_owner_of_NFT : (text) -> (Result_7);
+  init_collection : (text, text, principal) -> (Result);
+  mint : (text, text, principal) -> (Result);
+  update_additional_details : (AdditionalDetails) -> (Result);
+  update_doc_details : (vec vec record { text; text }) -> (Result);
+  update_financial_details : (FinancialDetails) -> (Result);
+  update_market_details : (MarketDetails) -> (Result);
+  update_name_desc : (opt text, opt text) -> (Result);
+  update_status : (Status) -> (Result);
 }
