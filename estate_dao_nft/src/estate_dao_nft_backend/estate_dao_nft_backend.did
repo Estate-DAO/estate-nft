@@ -25,7 +25,7 @@ type FinancialDetails = record {
   returns : opt ReturnsFinancials;
 };
 type InvestmentFinancials = record {
-  initial_mainatance_reserve : opt float32;
+  initial_maintenance_reserve : opt float32;
   underlying_asset_price : opt float32;
   platform_closing_fee : opt float32;
   min_investment : opt float32;
