@@ -52,7 +52,7 @@ pub struct CollectionMetadata {
 //Royalty structure is not fixed yet in ICRC7
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
 pub struct AdditionalMetadata {
-    pub additional_details: Option<AdditionalDetails>,
+    pub property_details: Option<PropertyDetails>,
     pub financial_details: Option<FinancialDetails>,
     pub documents: Vec<HashMap<String, String>>,
     pub market_details: Option<MarketDetails>,
@@ -61,8 +61,8 @@ pub struct AdditionalMetadata {
 //Documents metadata
 //Royalty structure is not fixed yet in ICRC7
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
-pub struct AdditionalDetails {
-    pub last_renovation: Option<String>,
+pub struct PropertyDetails {
+    pub last_renovated: Option<f32>,
     pub beds: Option<u32>,
     pub year_built: Option<u32>, 
     pub square_footage: Option<f32>,
@@ -80,7 +80,7 @@ pub struct AdditionalDetails {
 pub struct InvestmentFinancials {
     pub underlying_asset_price: Option<f32>,
     pub platform_closing_fee: Option<f32>,
-    pub initial_mainatance_reserve: Option<f32>, 
+    pub initial_maintenance_reserve: Option<f32>, 
     pub min_investment: Option<f32>,     
 }
  

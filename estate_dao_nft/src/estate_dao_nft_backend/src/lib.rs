@@ -2,7 +2,7 @@ mod state;
 
 use candid::IDLArgs;
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
-use state::{Account, AdditionalDetails, AdditionalMetadata, CollectionMetadata, FinancialDetails, MarketDetails, Metadata, NFTMetadata, Status};
+use state::{Account, PropertyDetails, AdditionalMetadata, CollectionMetadata, FinancialDetails, MarketDetails, Metadata, NFTMetadata, Status};
 use serde::Serialize;
 
 use ic_cdk::{query, update, init, caller};
@@ -51,7 +51,7 @@ fn init_collection(
                 total_supply:total_minted,
                 supply_cap:10000u16,
                 property_images:Vec::new(),
-                additional_metadata: Some(AdditionalMetadata{additional_details:None, financial_details:None, documents:Vec::new(), market_details:None}),
+                additional_metadata: Some(AdditionalMetadata{property_details:None, financial_details:None, documents:Vec::new(), market_details:None}),
                 status: Status::Draft,
                 owner: Principal::to_text(&owner)
         };
@@ -67,9 +67,10 @@ fn init_collection(
 
 
 #[update] 
-fn update_name_desc( 
+fn update_basic_details( 
     name: Option<String>,
-    desc: Option<String>
+    desc: Option<String>,
+    stat: Option<Status>
 ) -> Result<String, String> {
 
     COLLECTION_DATA.with(|coll_data| {
@@ -99,6 +100,12 @@ fn update_name_desc(
                 }
                 _ => {}
             }
+            match stat{
+                Some(new_status) => {
+                    col_data.status = new_status;
+                }
+                _ => {}
+            }
 
             *coll_data.borrow_mut() = col_data;
 
@@ -107,34 +114,6 @@ fn update_name_desc(
     })
 }
 
-//update status of collection
-#[update] 
-fn update_status( 
-    new_status: Status
-) -> Result<String, String> {
-
-    COLLECTION_DATA.with(|coll_data| {
-
-        let mut col_data= coll_data.borrow_mut().to_owned();
-
-        let user_res = Principal::from_text(col_data.owner.clone());
-        let user: Principal;
-        match user_res{
-            Ok(id) => {user=id;},
-            Err(e) => return Err("collection owner not initialized".to_string())
-        };
-        if caller() != user {
-            return Err("unathorized user".to_string());
-        }
-        else {
-            col_data.status = new_status;
-
-            *coll_data.borrow_mut() = col_data;
-
-            return Ok("property status updated succesfully".to_string());
-        }
-    })
-}
 
 // //collection specific data
 // // #[update(guard = "allow_only_authorized_principal")] 
@@ -205,8 +184,8 @@ fn update_financial_details(
 // //collection specific data
 // // #[update(guard = "allow_only_authorized_principal")] 
 #[update] 
-fn update_additional_details( 
-    add_det: AdditionalDetails
+fn update_property_details( 
+    add_det: PropertyDetails
 ) -> Result<String, String> {
 
     COLLECTION_DATA.with(|coll_data| {
@@ -225,7 +204,7 @@ fn update_additional_details(
         else {
             let mut add_meta = col_data.additional_metadata.ok_or("collection not initialized")?;
 
-            add_meta.additional_details = Some(add_det);
+            add_meta.property_details = Some(add_det);
             col_data.additional_metadata = Some(add_meta);
 
             *coll_data.borrow_mut() = col_data;
@@ -347,12 +326,12 @@ fn get_financial_details() -> Result<MarketDetails, String> {
 
 // additional details
 #[query] 
-fn get_additional_details() -> Result<AdditionalDetails, String> {
+fn get_property_details() -> Result<PropertyDetails, String> {
 
     let collection_data: CollectionMetadata = COLLECTION_DATA.with(|coll_data| { 
         coll_data.borrow().to_owned() });
 
-    return Ok(collection_data.additional_metadata.ok_or("collection not initialized")?.additional_details.ok_or("collection not initialized")?);
+    return Ok(collection_data.additional_metadata.ok_or("collection not initialized")?.property_details.ok_or("collection not initialized")?);
 }
 
 // TODO update total_minted in collectionMetadata
@@ -375,32 +354,32 @@ fn mint(symbol: String, uri: String, owner: Principal) -> Result<String, String>
 
     TOKEN_OWNER.with(|token_owner_map| {
         let mut owner_list =  token_owner_map.borrow_mut();
-        owner_list.insert(counter.clone().to_string(), owner.clone());
+        owner_list.insert(counter.to_string(), owner.clone());
     });    
     
     // TOKEN_LIST.with(|user_token_list| {
     //     let binding = user_token_list.borrow_mut();
     //     let token_list =  binding.get(&owner);
-    //     // token_list.insert(counter.clone().to_string(), owner.clone())
+    //     // token_list.insert(counter.to_string(), owner.clone())
     //     match token_list {
     //         Some(_v) => {
-    
+
     //             let mut token_list_map =  user_token_list.clone().borrow_mut().to_owned();
     //             let mut list: Vec<String> = Vec::new();
     //             token_list_map.get(&owner).unwrap().clone_into(&mut list); 
-    //             list.push(counter.clone().to_string());
+    //             list.push(counter.to_string());
     //             token_list_map.insert(owner.clone(), list);
 
-    //             // list.push(counter.clone().to_string());
+    //             // list.push(counter.to_string());
     //             // token_list_map.insert(owner.clone(), *list);
 
     //             // let mut list = token_list.unwrap(); 
-    //             // token_list.unwrap().push(counter.clone().to_string());
+    //             // token_list.unwrap().push(counter.to_string());
     //         }
     //         _ => {
     //             let mut token_list =  user_token_list.borrow_mut();
     //             let mut token_vec: Vec<String> = Vec::new();
-    //             token_vec.push(counter.clone().to_string());
+    //             token_vec.push(counter.to_string());
     //             token_list.insert(owner.clone(), token_vec);
     //         }
     //     };
@@ -408,9 +387,9 @@ fn mint(symbol: String, uri: String, owner: Principal) -> Result<String, String>
 
     NFT_STORE.with(|nft_list| {
         nft_list.borrow_mut().insert(
-            counter.clone().to_string(),
+            counter.to_string(),
             NFTMetadata{
-                collection_id,
+                collection_id: collection_id.to_string(),
                 nft_symbol: symbol,
                 nft_token_id: counter.to_string(),
                 nft_uri: uri

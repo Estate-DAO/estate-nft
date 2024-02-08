@@ -1,20 +1,6 @@
-type AdditionalDetails = record {
-  year_built : opt nat32;
-  occupied : opt bool;
-  crime_score : opt nat32;
-  monthly_rent : opt float32;
-  beds : opt nat32;
-  affordability : opt float32;
-  last_renovation : opt text;
-  square_footage : opt float32;
-  flood_zone : opt bool;
-  price_per_sq_foot : opt float32;
-  baths : opt nat32;
-  school_score : opt nat32;
-};
 type AdditionalMetadata = record {
   documents : vec vec record { text; text };
-  additional_details : opt AdditionalDetails;
+  property_details : opt PropertyDetails;
   financial_details : opt FinancialDetails;
   market_details : opt MarketDetails;
 };
@@ -64,6 +50,20 @@ type Metadata = record {
   total_supply : nat16;
   nft_symbol : text;
 };
+type PropertyDetails = record {
+  year_built : opt nat32;
+  occupied : opt bool;
+  crime_score : opt nat32;
+  monthly_rent : opt float32;
+  beds : opt nat32;
+  affordability : opt float32;
+  square_footage : opt float32;
+  flood_zone : opt bool;
+  price_per_sq_foot : opt float32;
+  baths : opt nat32;
+  school_score : opt nat32;
+  last_renovated : opt float32;
+};
 type RentFinancials = record {
   llc_monthly_franchise_tax : opt float32;
   vacancy_rate : opt float32;
@@ -73,13 +73,13 @@ type RentFinancials = record {
   monthly_utiliiies : opt float32;
 };
 type Result = variant { Ok : text; Err : text };
-type Result_1 = variant { Ok : AdditionalDetails; Err : text };
-type Result_2 = variant { Ok : CollectionMetadata; Err : text };
-type Result_3 = variant { Ok : Status; Err : text };
-type Result_4 = variant { Ok : MarketDetails; Err : text };
-type Result_5 = variant { Ok : FinancialDetails; Err : text };
-type Result_6 = variant { Ok : Metadata; Err : text };
-type Result_7 = variant { Ok : principal; Err : text };
+type Result_1 = variant { Ok : CollectionMetadata; Err : text };
+type Result_2 = variant { Ok : Status; Err : text };
+type Result_3 = variant { Ok : MarketDetails; Err : text };
+type Result_4 = variant { Ok : FinancialDetails; Err : text };
+type Result_5 = variant { Ok : Metadata; Err : text };
+type Result_6 = variant { Ok : principal; Err : text };
+type Result_7 = variant { Ok : PropertyDetails; Err : text };
 type ReturnsFinancials = record {
   average_5_year_roi : opt float32;
   yields : opt float32;
@@ -91,19 +91,18 @@ type Status = variant { Ended; Live; Draft; Upcoming };
 service : {
   add_collection_image : (text) -> (Result);
   collection_image : () -> (vec text) query;
-  get_additional_details : () -> (Result_1) query;
-  get_collection_metadata : () -> (Result_2) query;
-  get_collection_status : () -> (Result_3) query;
-  get_financial_details : () -> (Result_4) query;
-  get_market_details : () -> (Result_5) query;
-  get_metadata : (text) -> (Result_6) query;
-  get_owner_of_NFT : (text) -> (Result_7);
+  get_collection_metadata : () -> (Result_1) query;
+  get_collection_status : () -> (Result_2) query;
+  get_financial_details : () -> (Result_3) query;
+  get_market_details : () -> (Result_4) query;
+  get_metadata : (text) -> (Result_5) query;
+  get_owner_of_NFT : (text) -> (Result_6);
+  get_property_details : () -> (Result_7) query;
   init_collection : (text, text, principal) -> (Result);
   mint : (text, text, principal) -> (Result);
-  update_additional_details : (AdditionalDetails) -> (Result);
+  update_basic_details : (opt text, opt text, opt Status) -> (Result);
   update_doc_details : (vec vec record { text; text }) -> (Result);
   update_financial_details : (FinancialDetails) -> (Result);
   update_market_details : (MarketDetails) -> (Result);
-  update_name_desc : (opt text, opt text) -> (Result);
-  update_status : (Status) -> (Result);
+  update_property_details : (PropertyDetails) -> (Result);
 }
