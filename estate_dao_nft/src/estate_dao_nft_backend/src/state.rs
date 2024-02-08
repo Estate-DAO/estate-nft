@@ -1,3 +1,4 @@
+use ic_ledger_types::Timestamp;
 use serde::Serialize;
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
 use std::collections::HashMap;
@@ -81,7 +82,7 @@ pub struct InvestmentFinancials {
     pub underlying_asset_price: Option<f32>,
     pub platform_closing_fee: Option<f32>,
     pub initial_maintenance_reserve: Option<f32>, 
-    pub min_investment: Option<f32>,     
+    pub min_investment: Option<u64>,     
 }
  
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
@@ -149,4 +150,16 @@ pub struct Metadata {
     // pub royalty: RoyaltyData,
     pub total_supply: u16,
     pub supply_cap: u16,
+}
+
+#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
+pub struct SaleData{
+    pub nft_token_id: String,
+    pub buyer: Principal,
+    //tbd
+    //required only if seller_principal is updatable
+    // pub seller_principal: Principal,
+    pub amount: u64,
+    pub status: u16,
+    pub time: Timestamp,
 }

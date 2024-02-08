@@ -28,7 +28,7 @@ type InvestmentFinancials = record {
   initial_maintenance_reserve : opt float32;
   underlying_asset_price : opt float32;
   platform_closing_fee : opt float32;
-  min_investment : opt float32;
+  min_investment : opt nat64;
 };
 type MarketDetails = record {
   country : opt text;
@@ -73,13 +73,16 @@ type RentFinancials = record {
   monthly_utiliiies : opt float32;
 };
 type Result = variant { Ok : text; Err : text };
-type Result_1 = variant { Ok : CollectionMetadata; Err : text };
-type Result_2 = variant { Ok : Status; Err : text };
-type Result_3 = variant { Ok : MarketDetails; Err : text };
-type Result_4 = variant { Ok : FinancialDetails; Err : text };
-type Result_5 = variant { Ok : Metadata; Err : text };
-type Result_6 = variant { Ok : principal; Err : text };
-type Result_7 = variant { Ok : PropertyDetails; Err : text };
+type Result_1 = variant { Ok : vec nat8; Err : text };
+type Result_10 = variant { Ok : SaleData; Err : text };
+type Result_2 = variant { Ok : nat; Err : text };
+type Result_3 = variant { Ok : CollectionMetadata; Err : text };
+type Result_4 = variant { Ok : Status; Err : text };
+type Result_5 = variant { Ok : MarketDetails; Err : text };
+type Result_6 = variant { Ok : FinancialDetails; Err : text };
+type Result_7 = variant { Ok : Metadata; Err : text };
+type Result_8 = variant { Ok : principal; Err : text };
+type Result_9 = variant { Ok : PropertyDetails; Err : text };
 type ReturnsFinancials = record {
   average_5_year_roi : opt float32;
   yields : opt float32;
@@ -87,19 +90,31 @@ type ReturnsFinancials = record {
   projected_appreciation : opt float32;
   cap_rate : opt float32;
 };
+type SaleData = record {
+  status : nat16;
+  nft_token_id : text;
+  time : Timestamp;
+  buyer : principal;
+  amount : nat64;
+};
 type Status = variant { Ended; Live; Draft; Upcoming };
+type Timestamp = record { timestamp_nanos : nat64 };
 service : {
   add_collection_image : (text) -> (Result);
   collection_image : () -> (vec text) query;
-  get_collection_metadata : () -> (Result_1) query;
-  get_collection_status : () -> (Result_2) query;
-  get_financial_details : () -> (Result_3) query;
-  get_market_details : () -> (Result_4) query;
-  get_metadata : (text) -> (Result_5) query;
-  get_owner_of_NFT : (text) -> (Result_6);
-  get_property_details : () -> (Result_7) query;
+  create_accountid : (principal) -> (Result_1) composite_query;
+  delegate_transfer : (principal, principal) -> (Result_2);
+  get_collection_metadata : () -> (Result_3) query;
+  get_collection_status : () -> (Result_4) query;
+  get_financial_details : () -> (Result_5) query;
+  get_market_details : () -> (Result_6) query;
+  get_metadata : (text) -> (Result_7) query;
+  get_owner_of_NFT : (text) -> (Result_8);
+  get_property_details : () -> (Result_9) query;
+  get_sale_data : (text) -> (Result_10) query;
   init_collection : (text, text, principal) -> (Result);
   mint : (text, text, principal) -> (Result);
+  primary_sale : (principal, principal) -> (Result);
   update_basic_details : (opt text, opt text, opt Status) -> (Result);
   update_doc_details : (vec vec record { text; text }) -> (Result);
   update_financial_details : (FinancialDetails) -> (Result);

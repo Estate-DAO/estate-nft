@@ -1,23 +1,32 @@
 mod state;
 
-use candid::IDLArgs;
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
-use state::{Account, PropertyDetails, AdditionalMetadata, CollectionMetadata, FinancialDetails, MarketDetails, Metadata, NFTMetadata, Status};
+use ic_cdk::api::time;
+use state::{AdditionalMetadata, CollectionMetadata, FinancialDetails, MarketDetails, Metadata, NFTMetadata, PropertyDetails, SaleData, Status};
 use serde::Serialize;
 
-use ic_cdk::{query, update, init, caller};
+use ic_cdk::{api::call::call, query, update, init, caller};
 use std::{clone, string};
 use std::{cell::RefCell};
 use std::collections::{BTreeMap, HashMap};
+
+use ic_ledger_types::{
+    AccountBalanceArgs, AccountIdentifier, Memo, Subaccount, Tokens, DEFAULT_SUBACCOUNT, MAINNET_LEDGER_CANISTER_ID
+};
+use icrc_ledger_types::{
+    icrc1::account::Account, 
+    icrc2::{
+        allowance::{Allowance, AllowanceArgs},
+        transfer_from::{TransferFromArgs, TransferFromError}
+    }
+};
 
 type NFTList = BTreeMap<String, NFTMetadata>;
 // todo tbd CollectionList
 type CollectionList = BTreeMap<String, CollectionMetadata>;
 type TokenOwnerMap = BTreeMap<String, Principal>;
 type UserTokensList = BTreeMap<Principal, Vec<String>>;
-
-pub type Subaccount = [u8; 32];
-pub const DEFAULT_SUBACCOUNT: &Subaccount = &[0; 32];
+type SaleList = BTreeMap<String, SaleData>;
 
 thread_local! {
     static NFT_STORE: RefCell<NFTList> = RefCell::default();
@@ -26,6 +35,7 @@ thread_local! {
     static COLLECTION_ID: RefCell<String> = RefCell::new(String::default());
     static TOKEN_OWNER: RefCell<TokenOwnerMap> = RefCell::default();
     static TOKEN_LIST: RefCell<UserTokensList> = RefCell::default();
+    static SALE_DATA: RefCell<SaleList> = RefCell::default();
 
 }
 
@@ -462,6 +472,171 @@ fn collection_image() -> Vec<String>{
       
     collection_data.property_images
 }
+
+
+#[query(composite = true)]
+async fn create_accountid(caller_account: Principal) -> Result<AccountIdentifier, String> {
+    let canister_id = ic_cdk::api::id();
+
+    let ledger_canister_id = Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap();
+    // let account = AccountIdentifier::new(&caller_account, &principal_to_subaccount(&caller_account));
+    let account = AccountIdentifier::new(&caller_account, &DEFAULT_SUBACCOUNT);
+
+    let balance_args = ic_ledger_types::AccountBalanceArgs { account };
+    Ok(account)
+
+}
+
+
+#[update]
+async fn delegate_transfer(receiver_account: Principal, owner_id: Principal) -> Result<Nat, String> {
+    let canister_id = ic_cdk::api::id();
+
+    let ledger_canister_id = Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap();
+    // let account = AccountIdentifier::new(&caller_account, &principal_to_subaccount(&caller_account));
+    let receive_account = AccountIdentifier::new(&receiver_account, &DEFAULT_SUBACCOUNT);
+    let canister_account = AccountIdentifier::new(&canister_id, &DEFAULT_SUBACCOUNT);
+    let sender_account = AccountIdentifier::new(&owner_id, &DEFAULT_SUBACCOUNT);
+    // todo check allowance
+
+    let transfer_from_args = TransferFromArgs {
+        spender_subaccount: None,
+        memo: None,
+        amount: Nat::from(2_000_000u64),
+        fee: None,
+        from: Account::from(owner_id),
+        to: Account::from(receiver_account),
+        created_at_time: None,
+    };
+    // icrc_ledger_types::icrc2::transfer_from(ledger_canister_id, transfer_args)
+    //     .await
+    //     .unwrap().unwrap();
+
+    let res =  call(ledger_canister_id, "icrc2_transfer_from", (transfer_from_args,), ).await;
+    match res{
+        Ok(r) => {
+            let (res,): (Result<Nat, TransferFromError>,) = r;
+            Ok(res.unwrap())
+        },
+        Err(e) => Err(e.1)
+    }
+}
+
+
+#[update]
+async fn primary_sale(receiver_account: Principal, buyer_id: Principal) -> Result<String, String> {
+    let canister_id = ic_cdk::api::id();
+
+    let collection_data = COLLECTION_DATA.with(|coll_data| { 
+        coll_data.borrow().to_owned() }); 
+
+    let ledger_canister_id = Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap();
+    // let account = AccountIdentifier::new(&caller_account, &principal_to_subaccount(&caller_account));
+    let receive_account = AccountIdentifier::new(&receiver_account, &DEFAULT_SUBACCOUNT);
+    let canister_account = AccountIdentifier::new(&canister_id, &DEFAULT_SUBACCOUNT);
+    let buyer_account: AccountIdentifier = AccountIdentifier::new(&buyer_id, &DEFAULT_SUBACCOUNT);
+
+    // todo check allowance
+    let allowance_arg = AllowanceArgs{
+        account: Account::from(buyer_id),
+        spender: Account::from(canister_id),
+    };
+
+    let delegated_amount: Allowance;
+    let allowance_call_res =  call(ledger_canister_id, "icrc2_allowance", (allowance_arg,), ).await;
+    match allowance_call_res{
+        Ok(r) => {
+            let (res,): (Allowance,) = r;
+            delegated_amount = res;
+        },
+        Err(e) => todo!()
+    }
+    let nft_price = collection_data.additional_metadata
+        .ok_or("collection additional metadata not initalized")?
+        .financial_details.ok_or("unable to fetch prop price".to_string())?
+        .investment.ok_or("unable to fetch investment details")?
+        .min_investment.ok_or("unable to fetch selling price details")?;
+
+    // let nft_price = 1000000u64;
+    // check if allowance > nft price
+    if delegated_amount.allowance < nft_price {
+        return Err("delegated amount less than NFT price".to_string());
+    }
+
+    //new token id
+    //from mint function
+    //todo
+    let counter = COUNTER.with(|counter| {
+        *counter.borrow()
+    });
+
+    let sale_data = SaleData{
+        nft_token_id: ((counter + 1).to_string()),
+        buyer: buyer_id,
+        amount: 1_000_000,
+        status: 1,
+        time: ic_ledger_types::Timestamp { timestamp_nanos: time() }
+    };
+
+    SALE_DATA.with(|sale_list_map| {
+        let mut owner_list =  sale_list_map.borrow_mut();
+        owner_list.insert(counter.to_string(), sale_data);
+    });
+
+    let transfer_from_args = TransferFromArgs {
+        spender_subaccount: None,
+        memo: None,
+        amount: Nat::from(nft_price),
+        fee: None,
+        from: Account::from(buyer_id),
+        to: Account::from(receiver_account),
+        created_at_time: None,
+    };
+
+    let mut transfer_status: u16 = 0;
+    let res =  call(ledger_canister_id, "icrc2_transfer_from", (transfer_from_args,), ).await;
+    match res{
+        Ok(r) => {
+            let (res,): (Result<Nat, TransferFromError>,) = r;
+            match res{
+                Ok(_) => {transfer_status = 1},
+                Err(e) => {transfer_status = 0}
+            }
+        },
+        Err(e) => {transfer_status = 0}
+    }
+
+    if transfer_status == 0{
+        return Err("error transfering from canister to seller".to_string());
+    }
+
+    //tbd symbol, uri
+
+    //mint function
+    let symbol = String::from("value");
+    let uri = String::from("uri");
+    let mint_res = mint(symbol, uri, buyer_id);
+
+    match mint_res {
+        Ok(r) => Ok(r),
+        Err(e) => Err(e)
+    }
+
+}
+
+#[query] 
+fn get_sale_data(token_id : String) -> Result<SaleData, String> {
+
+    SALE_DATA.with(|sale_list| {
+        let sale_lists = sale_list.borrow();
+        let sale_data = sale_lists.get(&token_id);
+
+        let sale_data = sale_data.ok_or("SALE not forund")?.to_owned();
+
+        return Ok(sale_data);
+    }) 
+}
+
 
 ic_cdk::export_candid!();
 
