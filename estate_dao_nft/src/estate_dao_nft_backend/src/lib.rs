@@ -36,6 +36,7 @@ thread_local! {
     static TOKEN_OWNER: RefCell<TokenOwnerMap> = RefCell::default();
     static TOKEN_LIST: RefCell<UserTokensList> = RefCell::default();
     static SALE_DATA: RefCell<SaleList> = RefCell::default();
+    static TOTOAL_INVESTED: RefCell<u64> = RefCell::new (0u64);
 
 }
 
@@ -522,9 +523,8 @@ async fn delegate_transfer(receiver_account: Principal, owner_id: Principal) -> 
     }
 }
 
-
 #[update]
-async fn primary_sale(receiver_account: Principal, buyer_id: Principal) -> Result<String, String> {
+async fn primary_sale(buyer_id: Principal) -> Result<String, String> {
     let canister_id = ic_cdk::api::id();
 
     let collection_data = COLLECTION_DATA.with(|coll_data| { 
@@ -532,10 +532,11 @@ async fn primary_sale(receiver_account: Principal, buyer_id: Principal) -> Resul
 
     let ledger_canister_id = Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap();
     // let account = AccountIdentifier::new(&caller_account, &principal_to_subaccount(&caller_account));
-    let receive_account = AccountIdentifier::new(&receiver_account, &DEFAULT_SUBACCOUNT);
-    let canister_account = AccountIdentifier::new(&canister_id, &DEFAULT_SUBACCOUNT);
-    let buyer_account: AccountIdentifier = AccountIdentifier::new(&buyer_id, &DEFAULT_SUBACCOUNT);
+    // let receive_account = AccountIdentifier::new(&receiver_account, &DEFAULT_SUBACCOUNT);
+    // let canister_account = AccountIdentifier::new(&canister_id, &DEFAULT_SUBACCOUNT);
+    // let buyer_account: AccountIdentifier = AccountIdentifier::new(&buyer_id, &DEFAULT_SUBACCOUNT);
 
+    
     // todo check allowance
     let allowance_arg = AllowanceArgs{
         account: Account::from(buyer_id),
@@ -557,6 +558,8 @@ async fn primary_sale(receiver_account: Principal, buyer_id: Principal) -> Resul
         .investment.ok_or("unable to fetch investment details")?
         .min_investment.ok_or("unable to fetch selling price details")?;
 
+    let receiver_account = collection_data.owner;
+    let receiver_id =  Principal::from_text(receiver_account).unwrap();
     // let nft_price = 1000000u64;
     // check if allowance > nft price
     if delegated_amount.allowance < nft_price {
@@ -573,7 +576,7 @@ async fn primary_sale(receiver_account: Principal, buyer_id: Principal) -> Resul
     let sale_data = SaleData{
         nft_token_id: ((counter + 1).to_string()),
         buyer: buyer_id,
-        amount: 1_000_000,
+        amount: nft_price,
         status: 1,
         time: ic_ledger_types::Timestamp { timestamp_nanos: time() }
     };
@@ -589,7 +592,7 @@ async fn primary_sale(receiver_account: Principal, buyer_id: Principal) -> Resul
         amount: Nat::from(nft_price),
         fee: None,
         from: Account::from(buyer_id),
-        to: Account::from(receiver_account),
+        to: Account::from(receiver_id),
         created_at_time: None,
     };
 
@@ -610,11 +613,16 @@ async fn primary_sale(receiver_account: Principal, buyer_id: Principal) -> Resul
         return Err("error transfering from canister to seller".to_string());
     }
 
+    //update total_investes field
+    TOTOAL_INVESTED.with(|total_invest| {
+        *total_invest.borrow_mut() += nft_price;
+    });
+
     //tbd symbol, uri
 
     //mint function
-    let symbol = String::from("value");
-    let uri = String::from("uri");
+    let symbol = collection_data.name +  &counter.to_string();
+    let uri = String::from("image url");
     let mint_res = mint(symbol, uri, buyer_id);
 
     match mint_res {
@@ -622,6 +630,16 @@ async fn primary_sale(receiver_account: Principal, buyer_id: Principal) -> Resul
         Err(e) => Err(e)
     }
 
+}
+
+#[query] 
+fn get_total_invested() -> u64 {
+
+    let total_invested = TOTOAL_INVESTED.with(|total_invest| {
+        *total_invest.borrow()
+    });
+
+    total_invested
 }
 
 #[query] 
