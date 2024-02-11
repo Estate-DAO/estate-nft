@@ -46,7 +46,8 @@ pub struct CollectionMetadata {
     pub property_images: Vec<String>,
     pub additional_metadata: Option<AdditionalMetadata>,
     pub status: Status,
-    pub owner: String
+    pub owner: String,
+    pub is_initialised: bool,
 }
  
 //Additional metadata
@@ -160,6 +161,13 @@ pub struct SaleData{
     //required only if seller_principal is updatable
     // pub seller_principal: Principal,
     pub amount: u64,
-    pub status: u16,
+    pub status: SaleStatus,
     pub time: Timestamp,
+}
+
+#[derive(Clone, Debug, PartialEq, CandidType, Deserialize, Serialize)]
+pub enum SaleStatus{
+    Init,
+    Incomplete,
+    Complete
 }
