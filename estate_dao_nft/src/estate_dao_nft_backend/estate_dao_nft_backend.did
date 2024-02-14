@@ -11,8 +11,8 @@ type CollectionMetadata = record {
   desc : text;
   additional_metadata : opt AdditionalMetadata;
   name : text;
-  collection_id : text;
   property_images : vec text;
+  is_initialised : bool;
   total_supply : nat16;
 };
 type FinancialDetails = record {
@@ -23,6 +23,14 @@ type FinancialDetails = record {
   expense_to_income_ratio : opt float32;
   rents : opt RentFinancials;
   returns : opt ReturnsFinancials;
+};
+type FormMetadata = record {
+  supply_cap : nat16;
+  owner : text;
+  desc : text;
+  additional_metadata : opt AdditionalMetadata;
+  name : text;
+  property_images : vec text;
 };
 type InvestmentFinancials = record {
   initial_maintenance_reserve : opt float32;
@@ -44,7 +52,6 @@ type Metadata = record {
   supply_cap : nat16;
   nft_token_id : text;
   desc : text;
-  collection_id : text;
   collection_name : text;
   nft_uri : text;
   total_supply : nat16;
@@ -91,12 +98,13 @@ type ReturnsFinancials = record {
   cap_rate : opt float32;
 };
 type SaleData = record {
-  status : nat16;
+  status : SaleStatus;
   nft_token_id : text;
   time : Timestamp;
   buyer : principal;
   amount : nat64;
 };
+type SaleStatus = variant { Init; Complete; Incomplete };
 type Status = variant { Ended; Live; Draft; Upcoming };
 type Timestamp = record { timestamp_nanos : nat64 };
 service : {
@@ -112,9 +120,11 @@ service : {
   get_owner_of_NFT : (text) -> (Result_8);
   get_property_details : () -> (Result_9) query;
   get_sale_data : (text) -> (Result_10) query;
-  init_collection : (text, text, principal) -> (Result);
-  mint : (text, text, principal) -> (Result);
+  get_total_invested : () -> (nat64) query;
+  init_collection : (FormMetadata) -> (Result);
+  mint : (text, text, text, principal) -> (Result);
   primary_sale : (principal, principal) -> (Result);
+  primary_sale_mint : (text) -> (Result);
   update_basic_details : (opt text, opt text, opt Status) -> (Result);
   update_doc_details : (vec vec record { text; text }) -> (Result);
   update_financial_details : (FinancialDetails) -> (Result);

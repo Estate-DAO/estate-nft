@@ -2,7 +2,7 @@ mod state;
 
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
 use ic_cdk::api::time;
-use state::{AdditionalMetadata, CollectionMetadata, FinancialDetails, MarketDetails, Metadata, NFTMetadata, PropertyDetails, SaleData, SaleStatus, Status};
+use state::{AdditionalMetadata, CollectionMetadata, FinancialDetails, FormMetadata, MarketDetails, Metadata, NFTMetadata, PropertyDetails, SaleData, SaleStatus, Status};
 use serde::Serialize;
 
 use ic_cdk::{api::call::call, query, update, init, caller};
@@ -43,9 +43,7 @@ thread_local! {
 // #[update(guard = "allow_only_authorized_principal")] 
 #[update] 
 fn init_collection(
-    name: String, 
-    desc: String, 
-    owner: Principal,
+    form_data: FormMetadata
 ) -> Result<String, String> {
 
     COLLECTION_DATA.with(|coll_data| {
@@ -62,15 +60,14 @@ fn init_collection(
         else {
             *coll_data.borrow_mut() = 
                 CollectionMetadata{
-                    collection_id:"1".to_string(), //remove
-                    name,
-                    desc,
+                    name: form_data.name,
+                    desc: form_data.desc,
                     total_supply: total_minted,
-                    supply_cap:10000u16,
-                    property_images:Vec::new(),
-                    additional_metadata: Some(AdditionalMetadata{property_details:None, financial_details:None, documents:Vec::new(), market_details:None}),
+                    supply_cap: form_data.supply_cap,
+                    property_images: form_data.property_images,
+                    additional_metadata: form_data.additional_metadata,
                     status: Status::Draft,
-                    owner: Principal::to_text(&owner),
+                    owner: form_data.owner,
                     is_initialised: true
             };
             COLLECTION_ID.with(|coll_id| {
@@ -82,6 +79,27 @@ fn init_collection(
     })
     
 }
+
+// //collection specific data
+// // #[update(guard = "allow_only_authorized_principal")] 
+// #[update] 
+// fn init_form_metadata( 
+//     form_input: CollectionMetadata
+// ) -> Result<String, String> {
+
+//     COLLECTION_DATA.with(|coll_data| {
+
+//         // let form_data: CollectionMetadata = serde_json::from_slice(&form_input).unwrap();
+//         let counter = COUNTER.with(|counter| {
+//             *counter.borrow_mut() += 1;
+//             *counter.borrow()
+//         });
+
+//         *coll_data.borrow_mut() = form_input;
+
+//         Ok("form initiated succesfully".to_string())
+//     })
+// }
 
 
 #[update] 
@@ -361,9 +379,6 @@ fn mint(token_id: String, symbol: String, uri: String, owner: Principal) -> Resu
         *counter.borrow()
     });
 
-    let collection_id = COLLECTION_ID.with(|coll_id| (
-            *coll_id.borrow()).clone());
-
     COLLECTION_DATA.with(|coll_data| {
         let mut col_data: CollectionMetadata= coll_data.borrow_mut().to_owned();
         col_data.total_supply = counter;
@@ -406,7 +421,6 @@ fn mint(token_id: String, symbol: String, uri: String, owner: Principal) -> Resu
         nft_list.borrow_mut().insert(
             token_id.clone(),
             NFTMetadata{
-                collection_id: collection_id.to_string(),
                 nft_symbol: symbol,
                 nft_token_id: token_id,
                 nft_uri: uri
@@ -433,7 +447,6 @@ fn get_metadata(token_id : String) -> Result<Metadata, String> {
             coll_data.borrow().to_owned() });
 
             let metadata = Metadata{
-                collection_id: collection_data.collection_id,
                 nft_symbol: nft_data.nft_symbol,
                 nft_token_id: nft_data.nft_token_id,
                 nft_uri: nft_data.nft_uri,
@@ -542,7 +555,7 @@ async fn primary_sale(receiver_id: Principal, buyer_id: Principal) -> Result<Str
     // let receive_account = AccountIdentifier::new(&receiver_account, &DEFAULT_SUBACCOUNT);
     // let canister_account = AccountIdentifier::new(&canister_id, &DEFAULT_SUBACCOUNT);
     // let buyer_account: AccountIdentifier = AccountIdentifier::new(&buyer_id, &DEFAULT_SUBACCOUNT);
-    
+
     // new token_id
     let token_counter = COUNTER.with(|counter| {
     //     *counter.borrow_mut() += 1;
@@ -650,7 +663,6 @@ async fn primary_sale(receiver_id: Principal, buyer_id: Principal) -> Result<Str
             Err(e)
         },
     }
-
 }
 
 
@@ -712,16 +724,6 @@ fn get_sale_data(token_id : String) -> Result<SaleData, String> {
 }
 
 ic_cdk::export_candid!();
-
-/////////////////////
-// fn allow_only_authorized_principal() -> Result<(), String> {
-//     let authorized_principal_id = Principal::from_text("2ghx4-leaaa-aaaaa-qacru-cai").unwrap();
-//     if caller() != authorized_principal_id {
-//         Err(String::from("Access denied"))
-//     } else {
-//         Ok(())
-//     }
-// }
 
 
 fn allow_only_canister() -> Result<(), String> {

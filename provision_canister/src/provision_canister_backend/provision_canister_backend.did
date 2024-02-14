@@ -1,40 +1,94 @@
+type AdditionalMetadata = record {
+  documents : vec vec record { text; text };
+  property_details : opt PropertyDetails;
+  financial_details : opt FinancialDetails;
+  market_details : opt MarketDetails;
+};
 type CanisterIds = record {
   minter_canister : principal;
   asset_canister : principal;
 };
-type NFT_Metadata = record {
-  supply_cap : nat16;
-  nft_token_id : text;
-  desc : text;
-  collection_id : text;
-  collection_name : text;
-  royalty_percent : nat16;
-  nft_uri : text;
-  total_supply : nat16;
-  nft_symbol : text;
+type FinancialDetails = record {
+  total_monthly_cost : opt float32;
+  monthly_cash_flow : opt float32;
+  property_insurance : opt float32;
+  investment : opt InvestmentFinancials;
+  expense_to_income_ratio : opt float32;
+  rents : opt RentFinancials;
+  returns : opt ReturnsFinancials;
 };
-type PropDetails = record {
-  year_built : opt nat16;
-  purchase_price : opt nat16;
-  yields : opt float32;
-  projected_rent : opt nat16;
-  min_investment : opt float32;
+type FormMetadata = record {
+  supply_cap : nat16;
+  owner : text;
+  desc : text;
+  additional_metadata : opt AdditionalMetadata;
+  name : text;
+  property_images : vec text;
+};
+type InvestmentFinancials = record {
+  initial_maintenance_reserve : opt float32;
+  underlying_asset_price : opt float32;
+  platform_closing_fee : opt float32;
+  min_investment : opt nat64;
+};
+type MarketDetails = record {
+  country : opt text;
+  city : opt text;
+  description : opt text;
+  state : opt text;
+  average_rent : opt nat32;
+  median_home_sale_price : opt nat32;
+  coordinates : opt text;
+  annual_popullation_growth : opt nat32;
+};
+type PropertyDetails = record {
+  year_built : opt nat32;
+  occupied : opt bool;
+  crime_score : opt nat32;
+  monthly_rent : opt float32;
+  beds : opt nat32;
+  affordability : opt float32;
+  square_footage : opt float32;
+  flood_zone : opt bool;
+  price_per_sq_foot : opt float32;
+  baths : opt nat32;
+  school_score : opt nat32;
+  last_renovated : opt float32;
+};
+type RentFinancials = record {
+  llc_monthly_franchise_tax : opt float32;
+  vacancy_rate : opt float32;
+  property_taxes : opt float32;
+  property_managment_fee : opt float32;
+  projected_rent : opt float32;
+  monthly_utiliiies : opt float32;
 };
 type Result = variant { Ok : CanisterIds; Err : text };
-type Result_1 = variant { Ok : principal; Err : text };
-type Result_2 = variant { Ok : vec principal; Err : text };
-type Result_3 = variant { Ok : vec text; Err : text };
-type Result_4 = variant { Ok : NFT_Metadata; Err : text };
+type Result_1 = variant { Ok : vec principal; Err : text };
+type Result_2 = variant { Ok : vec CanisterIds; Err : text };
+type Result_3 = variant { Ok : vec nat8; Err : text };
+type Result_4 = variant { Ok : FormMetadata; Err : text };
 type Result_5 = variant { Ok : text; Err : text };
-type Result_6 = variant { Ok : vec CanisterIds; Err : text };
-
-type Status = variant { Draft; Ended; Live; Upcoming };
+type ReturnsFinancials = record {
+  average_5_year_roi : opt float32;
+  yields : opt float32;
+  total_5_year_irr : opt float32;
+  projected_appreciation : opt float32;
+  cap_rate : opt float32;
+};
+type Status = variant { Ended; Live; Draft; Upcoming };
 service : {
-  all_canister_create : (text, text) -> (Result);
-  get_all_minter_canisters : () -> (Result_2);
+  approve_collection : (nat16, bool) -> (Result);
+  filter_status : (Status) -> (Result_1);
+  get_all_canisters : () -> (Result_2) query;
+  get_all_minter_canisters : () -> (Result_1);
+  get_asset_wasm : () -> (Result_3) query;
+  get_form_metadata : (nat16) -> (Result_4);
+  get_minter_wasm : () -> (Result_3) query;
   grant_commit_permission : (principal, principal) -> (Result_5);
+  init_asset_wasm : (vec nat8) -> (Result_5);
+  init_form_metadata : (FormMetadata) -> (Result_5);
+  init_minter_wasm : (vec nat8) -> (Result_5);
   revoke_commit_permission : (principal, principal) -> (Result_5);
-  filter_status : (Status) -> (Result_2);
-  test_auth_user: () -> (Result_2);
-  get_all_canisters : () -> (Result_6) query;
+  test_auth_user : () -> (Result_1);
 }

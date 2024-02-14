@@ -1,3 +1,6 @@
+mod state;
+
+use ic_cdk::api::is_controller;
 use ic_cdk::api::management_canister::main::{create_canister, install_code, CreateCanisterArgument, CanisterInstallMode, InstallCodeArgument, CanisterSettings};
 use ic_cdk::api::call::{call, call_with_payment, CallResult,RejectionCode };
 use candid::{CandidType, Principal, Deserialize};
@@ -5,7 +8,10 @@ use ic_cdk::api::management_canister::provisional::CanisterIdRecord;
 use ic_cdk::{caller, notify, query, update};
 use serde::Serialize;
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
+
+use state::{AdditionalMetadata, FormMetadata, FinancialDetails, MarketDetails, PropertyDetails, SaleData, SaleStatus, Status, CanisterIds};
+
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct SetPermissions{
@@ -14,21 +20,15 @@ pub struct SetPermissions{
     pub manage_permissions: Vec<Principal>
 }
 
-#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
-pub struct CanisterIds{
-    pub asset_canister: Principal,
-    pub minter_canister: Principal,
+type FormData = BTreeMap<u16, FormMetadata>;
+// type FormDataPropDetails = BTreeMap<u16, PropertyDetails>;
+
+thread_local! {
+    static ADMIN_ACCOUNT: RefCell<String> = RefCell::default();
+    static FORM_DATA: RefCell<FormData> = RefCell::default();
+    static COUNTER: RefCell<u16> = RefCell::default();
+    static WASM_STORE: RefCell<WasmStore> = RefCell::default();
 }
-
-#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize, Serialize)]
-pub enum Status{
-    Draft,
-    Upcoming,
-    Live,
-    Ended,
-}
-
-
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct InitArgs;
@@ -36,6 +36,12 @@ pub struct InitArgs;
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct UpgradeArgs{
     pub set_permissions: Option<SetPermissions>
+}
+
+#[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
+pub struct WasmStore{
+    pub minter_wasm_blob: Vec<u8>,
+    pub asset_wasm_blob: Vec<u8>,
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
@@ -58,42 +64,74 @@ enum ProvisionError {
     InvalidData(String),
 }
 
-// collection+ NFT metadata
-#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
-pub struct NFT_Metadata {
-    pub collection_id: String,
-    pub nft_symbol: String,
-    pub nft_token_id: String,
-    pub nft_uri: String, //image   
-    pub collection_name: String,
-    pub desc: String,
-    pub royalty_percent: u16,
-    pub total_supply: u16,
-    pub supply_cap: u16,
+#[update] 
+fn init_minter_wasm( 
+    wasm: Vec<u8>,
+) -> Result<String, String> {
+
+    WASM_STORE.with(|wasms| {
+        wasms.borrow_mut().minter_wasm_blob = wasm;
+        // let mut wasms =  form_list.borrow_mut();
+        // form_list.insert(key, form_input);
+    });
+
+    Ok("minter set succesfully".to_string())
+}
+
+#[query] 
+fn get_minter_wasm( 
+) -> Result<Vec<u8>, String> {
+
+    WASM_STORE.with(|wasms| {
+        let wasm = wasms.borrow().to_owned();
+        Ok(wasm.minter_wasm_blob)
+
+        // let mut wasms =  form_list.borrow_mut();
+        // form_list.insert(key, form_input);
+    })
+}
+
+#[update] 
+fn init_asset_wasm( 
+    wasm: Vec<u8>,
+) -> Result<String, String> {
+
+    WASM_STORE.with(|wasms| {
+        wasms.borrow_mut().asset_wasm_blob = wasm;
+        // let mut wasms =  form_list.borrow_mut();
+        // form_list.insert(key, form_input);
+    });
+
+    Ok("asset wasm set succesfully".to_string())
 }
 
 
-#[query(composite = true)]
-async fn call_fun(id: Principal) -> String {
-    match call(id, "check_call", (), ).await {
-        Ok(r) => {
-            let (res,): (String,) = r;
-            res
-        },
-        Err(_) => "dummy".to_string()
-    }
+#[query] 
+fn get_asset_wasm( 
+) -> Result<Vec<u8>, String> {
+
+    WASM_STORE.with(|wasms| {
+        let wasm = wasms.borrow().to_owned();
+        Ok(wasm.asset_wasm_blob)
+
+        // let mut wasms =  form_list.borrow_mut();
+        // form_list.insert(key, form_input);
+    })
 }
 
-#[update]
-async fn get_token_metadata(id: Principal, token_id: String) -> Result<NFT_Metadata, String> {
-    let res =  call(id, "get_metadata", (token_id,), ).await; 
-        match res{
-            Ok(r) => {
-                let (res,): (Result<NFT_Metadata, String>,) = r;
-                res
-            },
-        Err(_) => Err("Error displaying metedata".to_string())
-    }
+//collection specific data
+#[update] 
+fn get_form_metadata( 
+    index: u16 
+) -> Result<FormMetadata, String> {
+
+    FORM_DATA.with(|form_list| {
+        let form_list =  form_list.borrow();
+        let form_data = form_list.get(&index).ok_or("no data for this index".to_string())?
+        .to_owned();
+    
+        Ok(form_data)
+    })
 }
 
 
@@ -117,144 +155,156 @@ fn revoke_commit_permission(id: Principal, user_id: Principal) -> Result<String,
     }
 }
 
-#[update]
-async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, String> {
 
-    let user = caller();
+// #[update]
+// async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, String> {
+ 
+//     let user = caller();
+//     // if !is_controller(&user) {
+//     //     return Err("Unauthorised user".to_string());
+//     // } 
 
-    let settings = CanisterSettings::default();
-    let create_arg = CreateCanisterArgument{
-        settings: Some(settings)
-    };
+//     let settings = CanisterSettings::default();
+//     let create_arg = CreateCanisterArgument{
+//         settings: Some(settings)
+//     };
 
-    let (canister_id_1,): (CanisterIdRecord,) = match call_with_payment(
-        Principal::management_canister(), // Management canister address
-        "create_canister", // Function name
-        (create_arg,), // Argument tuple
-        2_000_000_000_000, // Payment amount in cycles
-    ).await {
-        Ok(x) => x,
-        Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
-    };
+//     let wasms = WASM_STORE.with(|wasms| {
+//         wasms.borrow().to_owned()
+//     });
 
-    if canister_id_1.canister_id == Principal::anonymous() {
-        return Err("error creating asset canister".to_string());
-    } 
+//     let (canister_id_1,): (CanisterIdRecord,) = match call_with_payment(
+//         Principal::management_canister(), // Management canister address
+//         "create_canister", // Function name
+//         (create_arg,), // Argument tuple
+//         2_000_000_000_000, // Payment amount in cycles
+//     ).await {
+//         Ok(x) => x,
+//         Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
+//     };
 
-    let install_arg = Some(AssetCanisterArgs::InitArgs);
-    // let arg_vec = install_arg.as_bytes()
+//     if canister_id_1.canister_id == Principal::anonymous() {
+//         return Err("error creating asset canister".to_string());
+//     } 
 
-    let serialized_bytes: Vec<u8> = match install_arg {
-        // Some(install_args) => serde_json::to_string(&install_arg).unwrap().as_bytes().to_vec(),
-        Some(install_args) =>candid::encode_args((install_args,)).expect("Failed to encode arguments"),
+//     let install_arg = Some(AssetCanisterArgs::InitArgs);
+//     // let arg_vec = install_arg.as_bytes()
 
-        None => vec![],
-    };
+//     let serialized_bytes: Vec<u8> = match install_arg {
+//         // Some(install_args) => serde_json::to_string(&install_arg).unwrap().as_bytes().to_vec(),
+//         Some(install_args) =>candid::encode_args((install_args,)).expect("Failed to encode arguments"),
 
-    // let principal_id = new_canister_id.0.canister_id;
-    let asset_canister_id = canister_id_1.canister_id;
+//         None => vec![],
+//     };
 
-    pub const WASM: &[u8] =
-        include_bytes!("../assetstorage.wasm.gz");
+//     // let principal_id = new_canister_id.0.canister_id;
+//     let asset_canister_id = canister_id_1.canister_id;
+
+//     // pub const WASM: &[u8] =
+//     //     include_bytes!("../assetstorage.wasm.gz");
     
-    let wasm_file = WASM.to_vec();
+//     // let wasm_file = WASM.to_vec();
 
-    // create installCodeArgument
-    let install_config = InstallCodeArgument {
-        mode: CanisterInstallMode::Install,
-        wasm_module: wasm_file,
-        canister_id: asset_canister_id,
-        arg: (serialized_bytes),
-        // arg: {vec![]},
+//     let asset_wasm = wasms.asset_wasm_blob;
 
-    };
-    // Install the Wasm code into the new canister
-    let install_result = install_code(install_config).await;
+//     // create installCodeArgument
+//     let install_config = InstallCodeArgument {
+//         mode: CanisterInstallMode::Install,
+//         wasm_module: asset_wasm,
+//         canister_id: asset_canister_id,
+//         arg: (serialized_bytes),
+//         // arg: {vec![]},
+
+//     };
+//     // Install the Wasm code into the new canister
+//     let install_result = install_code(install_config).await;
 
 
-    match install_result {
-        Ok(_) => {}
-        Err(err) => {
-            eprintln!("Error installing code: {:?}", err);
-            return Err(err.1);
-        }
-    }
+//     match install_result {
+//         Ok(_) => {}
+//         Err(err) => {
+//             eprintln!("Error installing code: {:?}", err);
+//             return Err(err.1);
+//         }
+//     }
 
-    // create minter canister 
-    let settings = CanisterSettings::default();
-    let create_arg = CreateCanisterArgument{
-        settings: Some(settings)
-    };
+//     // create minter canister 
+//     let settings = CanisterSettings::default();
+//     let create_arg = CreateCanisterArgument{
+//         settings: Some(settings)
+//     };
 
-    let (canister_id_2,): (CanisterIdRecord,) = match call_with_payment(
-        Principal::management_canister(), // Management canister address
-        "create_canister", // Function name
-        (create_arg,), // Argument tuple
-        2_000_000_000_000, // Payment amount in cycles
-    ).await {
-        Ok(x) => x,
-        Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
-    };
+//     let (canister_id_2,): (CanisterIdRecord,) = match call_with_payment(
+//         Principal::management_canister(), // Management canister address
+//         "create_canister", // Function name
+//         (create_arg,), // Argument tuple
+//         2_000_000_000_000, // Payment amount in cycles
+//     ).await {
+//         Ok(x) => x,
+//         Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
+//     };
 
-    if canister_id_2.canister_id == Principal::anonymous() {
-        return Err("error creating asset canister".to_string());
-    } 
+//     if canister_id_2.canister_id == Principal::anonymous() {
+//         return Err("error creating asset canister".to_string());
+//     } 
 
-    // install minter canister
-    let minter_canister = canister_id_2.canister_id;
+//     // install minter canister
+//     let minter_canister = canister_id_2.canister_id;
 
-    pub const MINTERWASM: &[u8] =
-        include_bytes!("../../../../estate_dao_nft/target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm.gz");
-        // include_bytes!("../../../canister_dummy/target/wasm32-unknown-unknown/release/canister_dummy_backend.wasm");
+//     // pub const MINTERWASM: &[u8] =
+//     //     include_bytes!("../../../../estate_dao_nft/target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm.gz");
+//     //     // include_bytes!("../../../canister_dummy/target/wasm32-unknown-unknown/release/canister_dummy_backend.wasm");
 
-    let wasm_file = MINTERWASM.to_vec();
+//     // let wasm_file = MINTERWASM.to_vec();
 
-    // create installCodeArgument
-    let install_config = InstallCodeArgument {
-        mode: CanisterInstallMode::Install,
-        wasm_module: wasm_file,
-        canister_id: minter_canister,
-        arg: vec![],
-    };
+//     let minter_wasm = wasms.minter_wasm_blob;
 
-    // Install the Wasm code into the new canister
-    let install_result = install_code(install_config).await;
+//     // create installCodeArgument
+//     let install_config = InstallCodeArgument {
+//         mode: CanisterInstallMode::Install,
+//         wasm_module: minter_wasm,
+//         canister_id: minter_canister,
+//         arg: vec![],
+//     };
 
-    match install_result {
-        Ok(_) => {}
-        Err(err) => {
-            eprintln!("Error installing code: {:?}", err);
-            return Err(err.1);
-        }
-    }
+//     // Install the Wasm code into the new canister
+//     let install_result = install_code(install_config).await;
 
-    //remove
-    let mut e:String = String::from("");
+//     match install_result {
+//         Ok(_) => {}
+//         Err(err) => {
+//             eprintln!("Error installing code: {:?}", err);
+//             return Err(err.1);
+//         }
+//     }
 
-    let res =  call(minter_canister, "init_collection", (name, desc, user), ).await; 
-        match res{
-            Ok(r) => {
-                let (res,): (Result<String, String>,) = r;
-            }, 
-        Err(_) =>{e=String::from("error")}
-    }
+//     //remove
+//     let mut e:String = String::from("");
 
-    if e == "error".to_string(){
-        return Err("error initializing struct".to_string());
-    }
+//     let res =  call(minter_canister, "init_collection", (name, desc, user), ).await; 
+//         match res{
+//             Ok(r) => {
+//                 let (res,): (Result<String, String>,) = r;
+//             }, 
+//         Err(_) =>{e=String::from("error")}
+//     }
 
-    let canister_id_data = CanisterIds{
-        asset_canister: asset_canister_id,
-        minter_canister
-    };
+//     if e == "error".to_string(){
+//         return Err("error initializing struct".to_string());
+//     }
 
-    CANISTER_STORE.with(|canister_store| {
-        let mut canister_map =  canister_store.borrow_mut();
-        canister_map.insert(minter_canister.clone(), canister_id_data.clone());
-    });
+//     let canister_id_data = CanisterIds{
+//         asset_canister: asset_canister_id,
+//         minter_canister
+//     };
 
-    return Ok(canister_id_data);
-}
+//     CANISTER_STORE.with(|canister_store| {
+//         let mut canister_map =  canister_store.borrow_mut();
+//         canister_map.insert(minter_canister.clone(), canister_id_data.clone());
+//     });
+
+//     return Ok(canister_id_data) ;
+// }
 
 //test  
 #[update]
@@ -264,18 +314,6 @@ async fn test_auth_user() -> Result<Vec<Principal>, String> {
     let mut minter_canister_vec: Vec<Principal> = Vec::new();
     minter_canister_vec.push(caller);
 
-    // let res =  call(id, "get_collection_metadata", (), ).await; 
-    // match res{
-    //         Ok(r) => {
-    //             let (res,): (Result<CollectionMetadata, String>,) = r;
-    //             let prop_owner = res.unwrap().owner;
-    //             let prop_owner_principal = Principal::from_text(prop_owner).unwrap();
-                
-    //             minter_canister_vec.push(prop_owner_principal);
-    //         },
-    //     Err(e) => {}
-    // }
-
     return Ok(minter_canister_vec);  
 }
 
@@ -284,7 +322,6 @@ fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
 
     CANISTER_STORE.with(|canister_store| {
         let mut minter_canister_vec: Vec<Principal> = Vec::new();
-
         let canister_map = canister_store.borrow_mut();
         if canister_map.to_owned().is_empty() {
             return Ok(minter_canister_vec);
@@ -303,10 +340,10 @@ fn get_all_canisters() -> Result<Vec<CanisterIds>, String> {
         let mut canister_vec: Vec<CanisterIds> = Vec::new();
 
         let canister_map = canister_store.borrow().to_owned();
-        if canister_map.to_owned().is_empty() {
+        if canister_map.is_empty() {
             return Ok(canister_vec);
         }
-        for (_key, value) in canister_map.to_owned().iter() {
+        for (_key, value) in canister_map.iter() {
             canister_vec.push(value.to_owned());
         }
         return Ok(canister_vec);  
@@ -316,13 +353,13 @@ fn get_all_canisters() -> Result<Vec<CanisterIds>, String> {
 #[update]
 async fn filter_status(stat: Status) -> Result<Vec<Principal>, String> {
 
-    let collection_list = get_all_minter_canisters();
+    let collection_list = get_all_canisters();
     match collection_list {
         Ok(col_list) => {
             let mut filtered_list:Vec<Principal> = Vec::new();
 
             for col in col_list{
-                let result =  call(col, "get_collection_status", (), ).await; 
+                let result =  call(col.minter_canister, "get_collection_status", (), ).await; 
         
                 match result{
                     Ok(r) => {
@@ -330,7 +367,7 @@ async fn filter_status(stat: Status) -> Result<Vec<Principal>, String> {
                         match res {
                             Ok(s) => {
                                 if s == stat{
-                                    filtered_list.push(col);
+                                    filtered_list.push(col.minter_canister);
                                 }
                                 else{
                                     continue;
@@ -349,18 +386,310 @@ async fn filter_status(stat: Status) -> Result<Vec<Principal>, String> {
 
 }
 
-#[query]
-async fn get_collection_images(id: Principal) -> Result<Vec<String>, String> {
-    let res =  call(id, "collection_image", (), ).await; 
-        match res{
-            Ok(r) => {
-                let (res,): (Result<Vec<String>, String>,) = r;
-                res
-            },
-        Err(_) => Err("Error displaying collection images".to_string())
+
+#[update]
+async fn approve_collection(index: u16, approval: bool) -> Result<CanisterIds, String> {
+
+    let user = caller();
+    // if !is_controller(&user) {
+    //     return Err("Unauthorised user".to_string());
+    // } 
+
+    let form_list = FORM_DATA.with(|form_list_map| {
+        form_list_map.borrow().clone()
+    });
+
+    let _form_data = form_list.get(&index)
+        .ok_or("no form data for the index")?;
+
+    if approval {
+
+        let wasms = WASM_STORE.with(|wasms| {
+            wasms.borrow().to_owned()
+        });
+
+        let settings = CanisterSettings::default();
+        let create_arg = CreateCanisterArgument{
+            settings: Some(settings)
+        };
+
+        let (canister_id_1,): (CanisterIdRecord,) = match call_with_payment(
+            Principal::management_canister(), // Management canister address
+            "create_canister", // Function name
+            (create_arg,), // Argument tuple
+            2_000_000_000_000, // Payment amount in cycles
+        ).await {
+            Ok(x) => x,
+            Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
+        };
+
+        if canister_id_1.canister_id == Principal::anonymous() {
+            return Err("error creating asset canister".to_string());
+        } 
+
+        let install_arg = Some(AssetCanisterArgs::InitArgs);
+        // let arg_vec = install_arg.as_bytes()
+
+        let serialized_bytes: Vec<u8> = match install_arg {
+            // Some(install_args) => serde_json::to_string(&install_arg).unwrap().as_bytes().to_vec(),
+            Some(install_args) =>candid::encode_args((install_args,)).expect("Failed to encode arguments"),
+
+            None => vec![],
+        };
+
+        // let principal_id = new_canister_id.0.canister_id;
+        let asset_canister_id = canister_id_1.canister_id;
+
+        let asset_wasm = wasms.asset_wasm_blob;
+
+        // create installCodeArgument
+        let install_config = InstallCodeArgument {
+            mode: CanisterInstallMode::Install,
+            wasm_module: asset_wasm,
+            canister_id: asset_canister_id,
+            arg: (serialized_bytes),
+            // arg: {vec![]},
+
+        };
+        // Install the Wasm code into the new canister
+        let install_result = install_code(install_config).await;
+
+
+        match install_result {
+            Ok(_) => {}
+            Err(err) => {
+                eprintln!("Error installing code: {:?}", err);
+                return Err(err.1);
+            }
+        }
+
+        // create minter canister 
+        let settings = CanisterSettings::default();
+        let create_arg = CreateCanisterArgument{
+            settings: Some(settings)
+        };
+
+        let (canister_id_2,): (CanisterIdRecord,) = match call_with_payment(
+            Principal::management_canister(), // Management canister address
+            "create_canister", // Function name
+            (create_arg,), // Argument tuple
+            2_000_000_000_000, // Payment amount in cycles
+        ).await {
+            Ok(x) => x,
+            Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
+        };
+
+        if canister_id_2.canister_id == Principal::anonymous() {
+            return Err("error creating asset canister".to_string());
+        } 
+
+        // install minter canister
+        let minter_canister = canister_id_2.canister_id;
+
+        let minter_wasm = wasms.minter_wasm_blob;
+
+        // create installCodeArgument
+        let install_config = InstallCodeArgument {
+            mode: CanisterInstallMode::Install,
+            wasm_module: minter_wasm,
+            canister_id: minter_canister,
+            arg: vec![],
+        };
+
+        // Install the Wasm code into the new canister
+        let install_result = install_code(install_config).await;
+
+        match install_result {
+            Ok(_) => {}
+            Err(err) => {
+                eprintln!("Error installing code: {:?}", err);
+                return Err(err.1);
+            }
+        }
+
+        //remove
+        let mut e:String = String::from("");
+
+        let form_data = FORM_DATA.with(|form_list_map| {
+           let form_list = form_list_map.borrow();
+           form_list.get(&index).unwrap().clone()
+        });
+
+        let res =  call(minter_canister, "init_collection", (form_data,), ).await; 
+            match res{
+                Ok(r) => {
+                    let (res,): (Result<String, String>,) = r;
+                }, 
+            Err(_) =>{e=String::from("error")}
+        }
+
+        if e == "error".to_string(){
+            return Err("error initializing struct".to_string());
+        }
+
+        
+        FORM_DATA.with(|form_list_map| {
+            let mut form_list = form_list_map.borrow_mut();
+
+            let _form_entry = form_list.remove(&index);
+        });
+
+        let canister_id_data = CanisterIds{
+            asset_canister: asset_canister_id,
+            minter_canister
+        };
+
+        CANISTER_STORE.with(|canister_store| {
+            let mut canister_map =  canister_store.borrow_mut();
+            canister_map.insert(minter_canister.clone(), canister_id_data.clone());
+        });
+
+        return Ok(canister_id_data);
+    }
+    else {
+
+        FORM_DATA.with(|form_list_map| {
+            let mut form_list = form_list_map.borrow_mut();
+
+            let _form_entry = form_list.remove(&index);
+            // Ok(CanisterIds { asset_canister: (), minter_canister: () })
+            Err("collection rejected".to_string())
+        })
     }
 }
- 
+
+
+// //collection specific data
+// // #[update(guard = "allow_only_authorized_principal")] 
+// #[update] 
+// fn init_form_prop_details( 
+//     name: String,
+//     form_input: PropertyDetails
+// ) -> Result<String, String> {
+
+//     // let form_data: PropertyDetails = serde_json::from_slice(&form_input).unwrap();
+//     // let counter = COUNTER.with(|counter| {
+//     //     *counter.borrow_mut() += 1;
+//     //     *counter.borrow()
+//     // });
+
+//     let key = name + &"propdetails";
+//     FORM_PROP_DETAILS.with(|form_list| {
+//         let mut form_list =  form_list.borrow_mut();
+//         form_list.insert(key, form_input);
+//     });
+
+//     Ok("property details set succesfully".to_string())
+// }
+
+// //collection specific data
+// // #[update(guard = "allow_only_authorized_principal")] 
+// #[update] 
+// fn init_form_financial_details( 
+//     name: String,
+//     form_input: FinancialDetails
+// ) -> Result<String, String> {
+
+//     // let form_data: PropertyDetails = serde_json::from_slice(&form_input).unwrap();
+//     // let counter = COUNTER.with(|counter| {
+//     //     *counter.borrow_mut() += 1;
+//     //     *counter.borrow()
+//     // });
+
+//     let key = name + &"financialdetails";
+//     FORM_FINANCIAL_DETAILS.with(|form_list| {
+//         let mut form_list =  form_list.borrow_mut();
+//         form_list.insert(key, form_input);
+//     });
+
+//     Ok("financial details set succesfully".to_string())
+// }
+
+// //collection specific data
+// // #[update(guard = "allow_only_authorized_principal")] 
+// #[update] 
+// fn init_form_market_details( 
+//     name: String,
+//     form_input: MarketDetails
+// ) -> Result<String, String> {
+
+//     // let form_data: PropertyDetails = serde_json::from_slice(&form_input).unwrap();
+//     // let counter = COUNTER.with(|counter| {
+//     //     *counter.borrow_mut() += 1;
+//     //     *counter.borrow()
+//     // });
+
+//     let key = name + &"marketdetails";
+//     FORM_MARKET_DETAILS.with(|form_list| {
+//         let mut form_list =  form_list.borrow_mut();
+//         form_list.insert(key, form_input);
+//     });
+
+//     Ok("market details set succesfully".to_string())
+// }
+
+
+
+// //collection specific data
+// // #[update(guard = "allow_only_authorized_principal")] 
+// #[update] 
+// fn init_form_documents( 
+//     name: String,
+//     form_input: Vec<HashMap<String, String>>
+// ) -> Result<String, String> {
+
+//     // let form_data: PropertyDetails = serde_json::from_slice(&form_input).unwrap();
+//     // let counter = COUNTER.with(|counter| {
+//     //     *counter.borrow_mut() += 1;
+//     //     *counter.borrow()
+//     // });
+
+//     let key: String = name + &"document";
+//     FORM_DOCUMENTS.with(|form_list| {
+//         let mut form_list =  form_list.borrow_mut();
+//         form_list.insert(key, form_input);
+//     });
+
+//     Ok("documents set succesfully".to_string())
+// }
+
+
+#[update] 
+fn init_form_metadata( 
+    form_input: FormMetadata
+) -> Result<String, String> {
+
+    FORM_DATA.with(|coll_data| {
+
+        // let form_data: FormMetadata = serde_json::from_slice(&form_input).unwrap();
+        let counter = COUNTER.with(|counter| {
+            *counter.borrow_mut() += 1;
+            *counter.borrow()
+        });
+
+
+        FORM_DATA.with(|form_list| {
+            let mut form_list =  form_list.borrow_mut();
+            form_list.insert(counter, form_input);
+        });
+    
+        Ok("form initiated succesfully".to_string())
+    })
+}
+
+// todo
+// to add while deploying
+fn get_caller() -> Result<Principal, String> {  
+
+    let caller = caller();  
+    // The anonymous principal is not allowed to interact with canister.  
+    if caller == Principal::anonymous() {  
+        Err(String::from("Anonymous principal not allowed to make calls."))  
+    } else {  
+        Ok(caller)  
+    } 
+
+}
 
 // Enable Candid export
 ic_cdk::export_candid!();
