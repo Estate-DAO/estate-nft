@@ -83,6 +83,7 @@ service : {
   get_all_canisters : () -> (Result_2) query;
   get_all_minter_canisters : () -> (Result_1);
   get_asset_wasm : () -> (Result_3) query;
+  get_form_list : () -> (vec record { nat16; FormMetadata });
   get_form_metadata : (nat16) -> (Result_4);
   get_minter_wasm : () -> (Result_3) query;
   grant_commit_permission : (principal, principal) -> (Result_5);

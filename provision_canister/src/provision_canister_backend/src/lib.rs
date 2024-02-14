@@ -677,6 +677,19 @@ fn init_form_metadata(
     })
 }
 
+//collection specific data
+#[update] 
+fn get_form_list( 
+) -> BTreeMap<u16, FormMetadata> {
+
+    FORM_DATA.with(|form_list| {
+        let form_list =  form_list.borrow().to_owned();
+        
+        form_list
+    })
+}
+
+
 // todo
 // to add while deploying
 fn get_caller() -> Result<Principal, String> {  
