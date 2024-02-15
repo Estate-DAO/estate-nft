@@ -36,3 +36,6 @@ printf "( blob \"%s\")" "$asset_char_escaped" > argument2
 
 dfx canister call provision_canister_backend init_minter_wasm --argument-file argument1
 dfx canister call provision_canister_backend init_asset_wasm --argument-file argument2
+
+can_id=$(jq -r '.provision_canister_backend.local' ./.dfx/local/canister_ids.json)
+dfx canister deposit-cycles 8000000000000 $can_id

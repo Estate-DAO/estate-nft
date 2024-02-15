@@ -10,3 +10,6 @@ cd ../provision_canister
 
 dfx deploy provision_canister_backend
 dfx deploy internet_identity
+
+can_id=$(jq -r '.provision_canister_backend.local' ./.dfx/local/canister_ids.json)
+dfx canister deposit-cycles 8000000000000 $can_id
