@@ -2,22 +2,14 @@ use ic_ledger_types::Timestamp;
 use serde::{Serialize};
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
 use std::collections::HashMap;
-// use icrc_ledger_types::icrc1::account::Account;
+use icrc_ledger_types::icrc1::account::Account;
+
  
-pub type Subaccount = [u8; 32];
-pub const DEFAULT_SUBACCOUNT: &Subaccount = &[0; 32];
- 
-#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
-pub struct Account{ 
-    pub owner: Principal,
-    pub subaccount: Option<Subaccount>
-}
- 
-#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
-pub struct RoyaltyData{
-    pub royalty_share: u16,
-    pub royalty_account: Account,
-}
+// #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
+// pub struct RoyaltyData{
+//     pub royalty_share: u16,
+//     pub royalty_account: Account,
+// }
  
 impl Default for Status {
     fn default() -> Self {
@@ -157,7 +149,7 @@ pub struct Metadata {
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct SaleData{
     pub nft_token_id: String,
-    pub buyer: Principal,
+    pub buyer: Account,
     //tbd
     //required only if seller_principal is updatable
     // pub seller_principal: Principal,
@@ -165,7 +157,6 @@ pub struct SaleData{
     pub status: SaleStatus,
     pub time: Timestamp,
 }
-
 #[derive(Clone, Debug, PartialEq, CandidType, Deserialize, Serialize)]
 pub enum SaleStatus{
     Init,

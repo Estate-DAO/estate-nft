@@ -558,102 +558,6 @@ async fn approve_collection(index: u16, approval: bool) -> Result<CanisterIds, S
     }
 }
 
-
-// //collection specific data
-// // #[update(guard = "allow_only_authorized_principal")] 
-// #[update] 
-// fn init_form_prop_details( 
-//     name: String,
-//     form_input: PropertyDetails
-// ) -> Result<String, String> {
-
-//     // let form_data: PropertyDetails = serde_json::from_slice(&form_input).unwrap();
-//     // let counter = COUNTER.with(|counter| {
-//     //     *counter.borrow_mut() += 1;
-//     //     *counter.borrow()
-//     // });
-
-//     let key = name + &"propdetails";
-//     FORM_PROP_DETAILS.with(|form_list| {
-//         let mut form_list =  form_list.borrow_mut();
-//         form_list.insert(key, form_input);
-//     });
-
-//     Ok("property details set succesfully".to_string())
-// }
-
-// //collection specific data
-// // #[update(guard = "allow_only_authorized_principal")] 
-// #[update] 
-// fn init_form_financial_details( 
-//     name: String,
-//     form_input: FinancialDetails
-// ) -> Result<String, String> {
-
-//     // let form_data: PropertyDetails = serde_json::from_slice(&form_input).unwrap();
-//     // let counter = COUNTER.with(|counter| {
-//     //     *counter.borrow_mut() += 1;
-//     //     *counter.borrow()
-//     // });
-
-//     let key = name + &"financialdetails";
-//     FORM_FINANCIAL_DETAILS.with(|form_list| {
-//         let mut form_list =  form_list.borrow_mut();
-//         form_list.insert(key, form_input);
-//     });
-
-//     Ok("financial details set succesfully".to_string())
-// }
-
-// //collection specific data
-// // #[update(guard = "allow_only_authorized_principal")] 
-// #[update] 
-// fn init_form_market_details( 
-//     name: String,
-//     form_input: MarketDetails
-// ) -> Result<String, String> {
-
-//     // let form_data: PropertyDetails = serde_json::from_slice(&form_input).unwrap();
-//     // let counter = COUNTER.with(|counter| {
-//     //     *counter.borrow_mut() += 1;
-//     //     *counter.borrow()
-//     // });
-
-//     let key = name + &"marketdetails";
-//     FORM_MARKET_DETAILS.with(|form_list| {
-//         let mut form_list =  form_list.borrow_mut();
-//         form_list.insert(key, form_input);
-//     });
-
-//     Ok("market details set succesfully".to_string())
-// }
-
-
-
-// //collection specific data
-// // #[update(guard = "allow_only_authorized_principal")] 
-// #[update] 
-// fn init_form_documents( 
-//     name: String,
-//     form_input: Vec<HashMap<String, String>>
-// ) -> Result<String, String> {
-
-//     // let form_data: PropertyDetails = serde_json::from_slice(&form_input).unwrap();
-//     // let counter = COUNTER.with(|counter| {
-//     //     *counter.borrow_mut() += 1;
-//     //     *counter.borrow()
-//     // });
-
-//     let key: String = name + &"document";
-//     FORM_DOCUMENTS.with(|form_list| {
-//         let mut form_list =  form_list.borrow_mut();
-//         form_list.insert(key, form_input);
-//     });
-
-//     Ok("documents set succesfully".to_string())
-// }
-
-
 #[update] 
 fn init_form_metadata( 
     form_input: FormMetadata
@@ -666,7 +570,6 @@ fn init_form_metadata(
             *counter.borrow_mut() += 1;
             *counter.borrow()
         });
-
 
         FORM_DATA.with(|form_list| {
             let mut form_list =  form_list.borrow_mut();
@@ -688,7 +591,6 @@ fn get_form_list(
         form_list
     })
 }
-
 
 // todo
 // to add while deploying
