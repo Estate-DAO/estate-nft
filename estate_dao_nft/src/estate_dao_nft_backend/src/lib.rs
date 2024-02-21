@@ -508,7 +508,8 @@ fn collection_image() -> Vec<String>{
 
 
 #[update]
-async fn primary_sale(receiver_id: Principal, buyer_id: Principal) -> Result<String, String> {
+async fn primary_sale() -> Result<String, String> {
+    let buyer_id = caller();
     let canister_id = ic_cdk::api::id();
 
     // let canister_data = CANISTER_DATA.with(|canister_data_ref| {
