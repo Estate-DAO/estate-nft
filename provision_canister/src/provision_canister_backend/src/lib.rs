@@ -7,7 +7,8 @@ use candid::{CandidType, Principal, Deserialize};
 use ic_cdk::api::management_canister::provisional::CanisterIdRecord;
 use ic_cdk::{caller, notify, query, update};
 use serde::Serialize;
-use std::cell::RefCell;
+use serde_json::map::Keys;
+use std::cell::{Ref, RefCell};
 use std::collections::{BTreeMap, HashMap};
 
 use state::{AdditionalMetadata, FormMetadata, FinancialDetails, MarketDetails, PropertyDetails, SaleData, SaleStatus, Status, CanisterIds};
@@ -54,6 +55,7 @@ type CanisterStore = BTreeMap<Principal, CanisterIds>;
 
 thread_local! {
     static CANISTER_STORE: RefCell<CanisterStore> = RefCell::default();
+    static STRING_STORE: RefCell<String> = RefCell::default();
 }
 
 #[derive(thiserror::Error, Debug)]  
@@ -63,6 +65,37 @@ enum ProvisionError {
     #[error("Invalid data: {0}")]
     InvalidData(String),
 }
+
+
+#[update] 
+fn update_key( 
+    new_str: String,
+) -> Result<String, String> {
+
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
+
+    STRING_STORE.with(|key| {
+        *key.borrow_mut() = new_str;
+    });
+
+    Ok("key updated succesfully".to_string())
+}
+
+#[query] 
+fn verify_key( 
+    key: String,
+) -> bool {
+
+
+    let stored_key = STRING_STORE.with(|key| {key.borrow().to_owned()});
+    if key == stored_key{
+        return true;
+    }
+    false
+}
+
 
 #[update] 
 fn init_minter_wasm( 
@@ -570,6 +603,9 @@ fn init_form_metadata(
             *counter.borrow_mut() += 1;
             *counter.borrow()
         });
+        if !check_unique_name(form_input.name.clone()) {
+            return Err("collection name already taken".to_string());
+        }
 
         FORM_DATA.with(|form_list| {
             let mut form_list =  form_list.borrow_mut();
@@ -591,6 +627,28 @@ fn get_form_list(
         form_list
     })
 }
+
+//todo
+fn check_unique_name(name: String) -> bool {
+    let mut minter_canister_vec = Vec::new();
+    match get_all_minter_canisters() {
+        Ok(vec) => {
+            minter_canister_vec = vec;
+            for col in minter_canister_vec {
+                //call get_name function of minter
+                let name_str = String::from("nnnn");
+                if name == name_str{
+                    return false;
+                }
+            }
+            true
+        }
+        Err(_) => {
+            false        
+        }
+    }
+}
+
 
 // todo
 // to add while deploying

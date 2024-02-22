@@ -82,6 +82,7 @@ fn init_collection(
                     desc: form_data.desc,
                     total_supply: 0u16,
                     supply_cap: form_data.supply_cap,
+                    image: Some("image".to_string()),
                     property_images: form_data.property_images,
                     additional_metadata: add_metadata,
                     status: Status::Draft,
@@ -116,7 +117,6 @@ fn update_basic_details(
             Err("unathorized user".to_string())
         }
         else {
-
             match name{
                 Some(new_name) => {
                     col_data.name = new_name;
@@ -128,7 +128,7 @@ fn update_basic_details(
                     col_data.desc = new_description;
                 }
                 _ => {}
-            }
+            }            
             match stat{
                 Some(new_status) => {
                     col_data.status = new_status;
@@ -145,7 +145,6 @@ fn update_basic_details(
 }
 
 
-// //collection specific data
 // // #[update(guard = "allow_only_authorized_principal")] 
 #[update] 
 fn update_market_details( 
@@ -161,7 +160,7 @@ fn update_market_details(
         let user: Principal;
         match user_res{
             Ok(id) => {user=id;},
-            Err(e) => return Err("collection owner not initialized".to_string())
+            Err(_e) => return Err("collection owner not initialized".to_string())
         };
         if caller() != user {
             Err("unathorized user".to_string())
@@ -181,7 +180,6 @@ fn update_market_details(
     })
 }
 
-// //collection specific data
 // // #[update(guard = "allow_only_authorized_principal")] 
 #[update] 
 fn update_financial_details( 
@@ -200,7 +198,7 @@ fn update_financial_details(
             Err(_) => return Err("collection owner not initialized".to_string())
         };
         if caller() != user {
-            return Err("unathorized user".to_string());
+            Err("unathorized user".to_string())
         }
         else {
             let mut add_meta = col_data.additional_metadata.ok_or("collection not initialized")?;
@@ -212,7 +210,7 @@ fn update_financial_details(
             *canister_data.borrow_mut() = canister_data_ref;
 
 
-            return Ok("financial details added succesfully".to_string());
+            Ok("financial details added succesfully".to_string())
         }
     })
 }
@@ -224,7 +222,6 @@ fn update_property_details(
     add_det: PropertyDetails
 ) -> Result<String, String> {
 
-
     CANISTER_DATA.with(|canister_data| {
         
         let mut canister_data_ref= canister_data.borrow_mut().to_owned();
@@ -234,7 +231,7 @@ fn update_property_details(
         let user: Principal;
         match user_res{
             Ok(id) => {user=id;},
-            Err(e) => return Err("collection owner not initialized".to_string())
+            Err(_e) => return Err("collection owner not initialized".to_string())
         };
         if caller() != user {
             return Err("unathorized user".to_string());
@@ -321,8 +318,42 @@ fn update_doc_details(
     })
 }
 
+#[query] 
+fn icrc7_name() -> String {
 
-// Metadata items TBD
+    let collection_data = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().collection_data.to_owned() });
+
+    collection_data.name
+}
+
+#[query] 
+fn icrc7_image() -> Option<String> {
+
+    let collection_data = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().collection_data.to_owned() });
+
+    collection_data.image
+}
+
+#[query] 
+fn icrc7_description() -> String {
+
+    let collection_data = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().collection_data.to_owned() });
+
+    collection_data.desc
+}
+
+#[query] 
+fn icrc7_total_supply() -> u16 {
+
+    let collection_data = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().collection_data.to_owned() });
+
+    collection_data.total_supply
+}
+
 // for now using NFTMetadata + Collection Metadata 
 #[query] 
 fn get_collection_metadata() -> Result<CollectionMetadata, String> {
@@ -340,7 +371,7 @@ fn get_collection_status() -> Result<Status, String> {
     let collection_data = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().collection_data.to_owned() });
 
-    return Ok(collection_data.status);
+    Ok(collection_data.status)
 }
 
 // market details
@@ -467,7 +498,7 @@ fn get_metadata(token_id : String) -> Result<Metadata, String> {
 }
 
 #[update]
-fn get_owner_of_nft(token_id: String) -> Result<Account, String> {
+fn icrc7_owner_of(token_id: String) -> Result<Account, String> {
 
     CANISTER_DATA.with(|canister_data| {
         
@@ -546,6 +577,8 @@ async fn primary_sale() -> Result<String, String> {
     let receiver_account = collection_data.owner;
     let receiver_id =  Principal::from_text(receiver_account).unwrap();
 
+    let image_uri = collection_data.image.ok_or("image uri not set in collection")?;
+
     // check if allowance > nft price
     if delegated_amount.allowance < nft_price {
         return Err("delegated amount less than NFT price".to_string());
@@ -599,8 +632,8 @@ async fn primary_sale() -> Result<String, String> {
 
     //mint function
     let symbol = collection_data.name +  &counter.to_string();
-    let uri = String::from("image url");
-    let mint_res = mint(counter.to_string(), symbol, uri, buyer_id, 1);
+    // let uri = String::from("image url");
+    let mint_res = mint(counter.to_string(), symbol, image_uri, buyer_id, 1);
 
     match mint_res {
         Ok(r) => {
@@ -660,7 +693,7 @@ fn primary_sale_mint(token_id : String) -> Result<String, String> {
 
         canister_data_ref.sales_data = sales_data;
         *canister_data.borrow_mut() = canister_data_ref;
-        return mint_res;
+        mint_res
     })
 }
 
