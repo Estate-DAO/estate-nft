@@ -32,7 +32,7 @@ pub struct CollectionMetadata {
     pub desc: String,
     pub total_supply: u16,
     pub supply_cap: u16,
-    pub image: Option<String>,
+    // pub image: Option<String>,
     pub property_images: Vec<String>,
     pub additional_metadata: Option<AdditionalMetadata>,
     pub status: Status,

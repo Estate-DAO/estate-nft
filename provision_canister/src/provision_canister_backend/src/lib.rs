@@ -88,14 +88,12 @@ fn verify_key(
     key: String,
 ) -> bool {
 
-
     let stored_key = STRING_STORE.with(|key| {key.borrow().to_owned()});
     if key == stored_key{
         return true;
     }
     false
 }
-
 
 #[update] 
 fn init_minter_wasm( 
@@ -486,7 +484,6 @@ async fn approve_collection(index: u16, approval: bool) -> Result<CanisterIds, S
         };
         // Install the Wasm code into the new canister
         let install_result = install_code(install_config).await;
-
 
         match install_result {
             Ok(_) => {}
