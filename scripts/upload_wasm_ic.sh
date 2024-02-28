@@ -33,6 +33,5 @@ asset_char_escaped=$(printf "%s" "$asset_char" | sed 's/../\\&/g')
 
 printf "( blob \"%s\")" "$asset_char_escaped" > argument2
 
-
 dfx canister call provision_canister_backend init_minter_wasm --argument-file argument1 --ic
 dfx canister call provision_canister_backend init_asset_wasm --argument-file argument2 --ic

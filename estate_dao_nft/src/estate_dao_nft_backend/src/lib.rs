@@ -611,11 +611,6 @@ async fn primary_sale(user: Principal) -> Result<String, String> {
                     *canister_data.borrow_mut() = canister_data_ref;
                 });
 
-                // let mint_allowance = (stored_bal.saturating_sub(*used_bal)).saturating_div(nft_price);
-                // let res = mint_approved_nfts(user, mint_allowance);
-                // ic_cdk::println!("mint allowance 22: {}", mint_allowance);
-
-                // return res;
                 return Ok("balance_updated".to_string());
 
             }
@@ -627,11 +622,7 @@ async fn primary_sale(user: Principal) -> Result<String, String> {
                     let mut canister_data_ref= canister_data.borrow_mut();
                     canister_data_ref.user_balance.insert(user, (current_balance, 0));
                 });
-                // let mint_allowance = current_balance.saturating_div(nft_price);
-                // // let mint_allowance = 5;
-                // let res = mint_approved_nfts(user, mint_allowance);
-                // ic_cdk::println!("mint allowance: {}", mint_allowance);
-                // return res;
+
                 return Ok("balance updated for new user".to_string());
 
             }
@@ -714,12 +705,22 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
     Ok("success".to_string())
 }
 
-// #[update] 
-// fn sale_confirmed_mint() -> Result<String, String> {
-//     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
-//         canister_data.borrow().to_owned() });
-
-// }
+#[update] 
+fn sale_confirmed_mint() -> Result<String, String> {
+    let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().to_owned() });
+    let user_balance = canister_data_ref.user_balance;
+    for (key, value) in user_balance.iter() {
+        let res = mint_approved_nfts(*key);
+        match res {
+            Ok(_val) => {continue;},
+            Err(error_str) => { 
+                return Err(error_str);
+            }
+        }
+    }
+    Ok("NFTs minted succesfully for all participants".to_string())
+}
 
 #[query(composite = true)]
 async fn get_payment_details(caller_account: Principal) -> Result<(String, u64, u64), String> {
@@ -837,6 +838,7 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
             return Err("unable to fetch balance".to_string());
         },
     }
+    let escrow_token_balance = token_balance.e8s();
         
     // let escrow_subaccount = Subaccount::from(user);
     // let escrow_account = Account{
@@ -846,7 +848,7 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
 
     let transfer_args = TransferArgs {
         memo: ic_ledger_types::Memo(0),
-        amount: Tokens::from_e8s(token_balance.e8s().saturating_sub(ICP_FEE)),
+        amount: Tokens::from_e8s(escrow_token_balance.saturating_sub(ICP_FEE)),
         fee: Tokens::from_e8s(ICP_FEE),
         from_subaccount: Some(Subaccount::from(user)),
         to: AccountIdentifier::new(&user, &DEFAULT_SUBACCOUNT),
@@ -859,8 +861,41 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
         .expect("call to ledger failed")
         .expect("transfer failed");
 
+    let user_data = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().user_balance.to_owned() });
+
+    let user_balance = user_data.get(&user);
+    match  user_balance{
+        Some((stored_bal, used_bal)) => {
+                CANISTER_DATA.with(|canister_data| {
+                    let mut canister_data_ref= canister_data.borrow_mut().to_owned();
+                    canister_data_ref.user_balance.insert(user, (0, *used_bal));
+                });
+        }   
+        None => {
+            return  Err("user had no balance".to_string());
+        },
+    }
     Ok("success".to_string())
 
+}
+
+
+#[update] 
+async fn sale_confirmed_refund() -> Result<String, String> {
+    let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().to_owned() });
+    let user_balance = canister_data_ref.user_balance;
+    for (key, value) in user_balance.iter() {
+        let res = refund_user_tokens(*key).await;
+        match res {
+            Ok(_val) => {continue;},
+            Err(error_str) => { 
+                return Err(error_str);
+            }
+        }
+    }
+    Ok("NFTs minted succesfully for all participants".to_string())
 }
 
 #[query] 
@@ -876,7 +911,7 @@ fn get_total_invested() -> u64 {
 fn get_sale_data(token_id : String) -> Result<SaleData, String> {
 
     CANISTER_DATA.with(|canister_data| {
-
+        
         let canister_data_ref= canister_data.borrow().to_owned();
         let sales_data_map = canister_data_ref.sales_data;
 
