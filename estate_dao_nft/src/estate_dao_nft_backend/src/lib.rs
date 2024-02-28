@@ -87,7 +87,9 @@ fn init_collection(
                 CollectionMetadata{
                     name: form_data.name,
                     desc: form_data.desc,
-                    total_supply: 0u16,
+                    total_supply: 0,
+                    price: form_data.price,
+                    image_uri: form_data.image_uri,
                     supply_cap: form_data.supply_cap,
                     // image: Some("image".to_string()),
                     property_images: form_data.property_images,
@@ -334,14 +336,14 @@ fn icrc7_name() -> String {
     collection_data.name
 }
 
-// #[query] 
-// fn icrc7_image() -> Option<String> {
+#[query] 
+fn icrc7_image() -> String {
 
-//     let collection_data = CANISTER_DATA.with(|canister_data| { 
-//         canister_data.borrow().collection_data.to_owned() });
+    let collection_data = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().collection_data.to_owned() });
 
-//     collection_data.image
-// }
+    collection_data.image_uri
+}
 
 #[query] 
 fn icrc7_description() -> String {
@@ -353,7 +355,7 @@ fn icrc7_description() -> String {
 }
 
 #[query] 
-fn icrc7_total_supply() -> u16 {
+fn icrc7_total_supply() -> u64 {
 
     let collection_data = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().collection_data.to_owned() });
@@ -566,11 +568,7 @@ async fn primary_sale(user: Principal) -> Result<String, String> {
     // new token_id
     let token_counter = collection_data.total_supply;
 
-    let nft_price = collection_data.additional_metadata
-        .ok_or("collection additional metadata not initalized")?
-        .financial_details.ok_or("unable to fetch prop price".to_string())?
-        .investment.ok_or("unable to fetch investment details")?
-        .min_investment.ok_or("unable to fetch selling price details")?;
+    let nft_price = collection_data.price;
 
     let account = AccountIdentifier::new(&canister_id, &Subaccount::from(user));
 
@@ -640,11 +638,8 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
 
-    let nft_price = canister_data_ref.collection_data.additional_metadata
-        .ok_or("collection additional metadata not initalized")?
-        .financial_details.ok_or("unable to fetch prop price".to_string())?
-        .investment.ok_or("unable to fetch investment details")?
-        .min_investment.ok_or("unable to fetch selling price details")?;
+        let nft_price = canister_data_ref.collection_data.price;
+
 
     let total_minted_nfts =  canister_data_ref.collection_data.total_supply;
     let mut counter = total_minted_nfts.saturating_add(1);
@@ -667,12 +662,14 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
     }
 
     let symbol = canister_data_ref.collection_data.name.clone() +  &counter.to_string();
-    let uri = String::from("image url");
+    let uri = canister_data_ref.collection_data.image_uri;
 
     //check for approved mints remaining    
     // let approved_mints = 5;
 
     for _mints in 0 .. mint_allowance{
+        let symbol = canister_data_ref.collection_data.name.clone() +  &counter.to_string();
+
         CANISTER_DATA.with(|canister_data| {
 
             let mut canister_data_ref = canister_data.borrow().to_owned();
@@ -734,11 +731,7 @@ async fn get_payment_details(caller_account: Principal) -> Result<(String, u64, 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
 
-    let nft_price = canister_data_ref.collection_data.additional_metadata
-        .ok_or("collection additional metadata not initalized")?
-        .financial_details.ok_or("unable to fetch prop price".to_string())?
-        .investment.ok_or("unable to fetch investment details")?
-        .min_investment.ok_or("unable to fetch selling price details")?;
+    let nft_price = canister_data_ref.collection_data.price;
 
     //user's invested amount
     let user_data = CANISTER_DATA.with(|canister_data| { 
@@ -779,7 +772,7 @@ fn primary_sale_mint(token_id : String) -> Result<String, String> {
 
         //mint function
         let symbol = canister_data_ref.collection_data.name.clone() +  &token_id;
-        let uri = String::from("image url");
+        let uri = canister_data_ref.collection_data.image_uri.clone();
         let mint_res = mint(token_id, symbol, uri, buyer_id);
 
         sale_data.status = SaleStatus::Complete;

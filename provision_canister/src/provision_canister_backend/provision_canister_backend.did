@@ -18,12 +18,14 @@ type FinancialDetails = record {
   returns : opt ReturnsFinancials;
 };
 type FormMetadata = record {
-  supply_cap : nat16;
+  supply_cap : nat64;
+  image_uri : text;
   owner : text;
   desc : text;
   additional_metadata : opt AdditionalMetadata;
   name : text;
   property_images : vec text;
+  primary_sale_price : nat64;
 };
 type InvestmentFinancials = record {
   initial_maintenance_reserve : opt float32;

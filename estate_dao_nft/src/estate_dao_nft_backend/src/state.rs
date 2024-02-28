@@ -30,9 +30,10 @@ pub enum Status{
 pub struct CollectionMetadata {
     pub name: String,
     pub desc: String,
-    pub total_supply: u16,
-    pub supply_cap: u16,
-    // pub image: Option<String>,
+    pub total_supply: u64,
+    pub supply_cap: u64,
+    pub price: u64,
+    pub image_uri: String,
     pub property_images: Vec<String>,
     pub additional_metadata: Option<AdditionalMetadata>,
     pub status: Status,
@@ -120,7 +121,9 @@ pub struct MarketDetails {
 pub struct FormMetadata {
     pub name: String,
     pub desc: String,
-    pub supply_cap: u16,
+    pub supply_cap: u64,
+    pub price: u64,
+    pub image_uri: String,
     pub property_images: Vec<String>,
     pub additional_metadata: Option<AdditionalMetadata>,
     pub owner: String,
@@ -143,8 +146,8 @@ pub struct Metadata {
     pub collection_name: String,
     pub desc: String,
     // pub royalty: RoyaltyData,
-    pub total_supply: u16,
-    pub supply_cap: u16,
+    pub total_supply: u64,
+    pub supply_cap: u64,
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]

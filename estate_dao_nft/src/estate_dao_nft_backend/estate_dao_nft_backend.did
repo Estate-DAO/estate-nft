@@ -7,14 +7,16 @@ type AdditionalMetadata = record {
 };
 type CollectionMetadata = record {
   status : Status;
-  supply_cap : nat16;
+  supply_cap : nat64;
+  image_uri : text;
   owner : text;
   desc : text;
   additional_metadata : opt AdditionalMetadata;
   name : text;
   property_images : vec text;
+  price : nat64;
   is_initialised : bool;
-  total_supply : nat16;
+  total_supply : nat64;
 };
 type FinancialDetails = record {
   total_monthly_cost : opt float32;
@@ -26,12 +28,14 @@ type FinancialDetails = record {
   returns : opt ReturnsFinancials;
 };
 type FormMetadata = record {
-  supply_cap : nat16;
+  supply_cap : nat64;
+  image_uri : text;
   owner : text;
   desc : text;
   additional_metadata : opt AdditionalMetadata;
   name : text;
   property_images : vec text;
+  price : nat64;
 };
 type InvestmentFinancials = record {
   initial_maintenance_reserve : opt float32;
@@ -50,12 +54,12 @@ type MarketDetails = record {
   annual_popullation_growth : opt nat32;
 };
 type Metadata = record {
-  supply_cap : nat16;
+  supply_cap : nat64;
   nft_token_id : text;
   desc : text;
   collection_name : text;
   nft_uri : text;
-  total_supply : nat16;
+  total_supply : nat64;
   nft_symbol : text;
 };
 type PropertyDetails = record {
@@ -123,9 +127,10 @@ service : {
   get_sale_data : (text) -> (Result_9) query;
   get_total_invested : () -> (nat64) query;
   icrc7_description : () -> (text) query;
+  icrc7_image : () -> (text) query;
   icrc7_name : () -> (text) query;
   icrc7_owner_of : (text) -> (Result_10);
-  icrc7_total_supply : () -> (nat16) query;
+  icrc7_total_supply : () -> (nat64) query;
   init_collection : (FormMetadata) -> (Result);
   mint : (text, text, text, principal) -> (Result);
   mint_approved_nfts : (principal) -> (Result);
