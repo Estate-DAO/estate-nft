@@ -7,9 +7,9 @@ use candid::{CandidType, Principal, Deserialize};
 use ic_cdk::api::management_canister::provisional::CanisterIdRecord;
 use ic_cdk::{caller, notify, query, update};
 use serde::Serialize;
-use serde_json::map::Keys;
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
+// use argon2::{Argon2, PasswordHash, PasswordVerifier, Variant, Version};
 
 use state::{AdditionalMetadata, FormMetadata, FinancialDetails, MarketDetails, PropertyDetails, SaleData, SaleStatus, Status, CanisterIds};
 
@@ -22,13 +22,21 @@ pub struct SetPermissions{
 }
 
 type FormData = BTreeMap<u16, FormMetadata>;
+type CanisterStore = BTreeMap<Principal, CanisterIds>;
+
 // type FormDataPropDetails = BTreeMap<u16, PropertyDetails>;
 
+#[derive(Clone, Debug, CandidType, Default, Deserialize, Serialize)]
+pub struct CanisterData { 
+    pub form_data: FormData,
+    pub form_counter: u16,
+    pub wasm_store: WasmStore,
+    pub canister_store: CanisterStore,
+    pub stored_key: String
+}
+
 thread_local! {
-    static ADMIN_ACCOUNT: RefCell<String> = RefCell::default();
-    static FORM_DATA: RefCell<FormData> = RefCell::default();
-    static COUNTER: RefCell<u16> = RefCell::default();
-    static WASM_STORE: RefCell<WasmStore> = RefCell::default();
+    static CANISTER_DATA: RefCell<CanisterData> = RefCell::default();
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
@@ -51,13 +59,6 @@ pub enum AssetCanisterArgs{
     UpgradeArgs
 }
 
-type CanisterStore = BTreeMap<Principal, CanisterIds>;
-
-thread_local! {
-    static CANISTER_STORE: RefCell<CanisterStore> = RefCell::default();
-    static STRING_STORE: RefCell<String> = RefCell::default();
-}
-
 #[derive(thiserror::Error, Debug)]  
 enum ProvisionError {
     #[error("minter canister not initalized")]
@@ -76,8 +77,9 @@ fn update_key(
         return Err("UnAuthorised Access".into());
     }
 
-    STRING_STORE.with(|key| {
-        *key.borrow_mut() = new_str;
+    CANISTER_DATA.with(|canister_data| {   
+        let mut stored_str = canister_data.borrow_mut().stored_key.to_owned();     
+        stored_str = new_str;
     });
 
     Ok("key updated succesfully".to_string())
@@ -88,8 +90,10 @@ fn verify_key(
     key: String,
 ) -> bool {
 
-    let stored_key = STRING_STORE.with(|key| {key.borrow().to_owned()});
-    if key == stored_key{
+    let stored_str = CANISTER_DATA.with(|canister_data| {
+        canister_data.borrow().stored_key.to_owned() });  
+
+    if stored_str == key{
         return true;
     }
     false
@@ -100,12 +104,9 @@ fn init_minter_wasm(
     wasm: Vec<u8>,
 ) -> Result<String, String> {
 
-    WASM_STORE.with(|wasms| {
-        wasms.borrow_mut().minter_wasm_blob = wasm;
-        // let mut wasms =  form_list.borrow_mut();
-        // form_list.insert(key, form_input);
+    CANISTER_DATA.with(|canister_data| {
+        canister_data.borrow_mut().wasm_store.minter_wasm_blob = wasm;
     });
-
     Ok("minter set succesfully".to_string())
 }
 
@@ -113,12 +114,10 @@ fn init_minter_wasm(
 fn get_minter_wasm( 
 ) -> Result<Vec<u8>, String> {
 
-    WASM_STORE.with(|wasms| {
-        let wasm = wasms.borrow().to_owned();
-        Ok(wasm.minter_wasm_blob)
-
-        // let mut wasms =  form_list.borrow_mut();
-        // form_list.insert(key, form_input);
+    CANISTER_DATA.with(|canister_data| {
+        let canister_data_ref = canister_data.borrow().to_owned();
+        let wasm = canister_data_ref.wasm_store.minter_wasm_blob;
+        Ok(wasm)
     })
 }
 
@@ -127,26 +126,20 @@ fn init_asset_wasm(
     wasm: Vec<u8>,
 ) -> Result<String, String> {
 
-    WASM_STORE.with(|wasms| {
-        wasms.borrow_mut().asset_wasm_blob = wasm;
-        // let mut wasms =  form_list.borrow_mut();
-        // form_list.insert(key, form_input);
+    CANISTER_DATA.with(|canister_data| {
+        canister_data.borrow_mut().wasm_store.asset_wasm_blob = wasm;
     });
-
     Ok("asset wasm set succesfully".to_string())
 }
-
 
 #[query] 
 fn get_asset_wasm( 
 ) -> Result<Vec<u8>, String> {
 
-    WASM_STORE.with(|wasms| {
-        let wasm = wasms.borrow().to_owned();
-        Ok(wasm.asset_wasm_blob)
-
-        // let mut wasms =  form_list.borrow_mut();
-        // form_list.insert(key, form_input);
+    CANISTER_DATA.with(|canister_data| {
+        let canister_data_ref =  canister_data.borrow().to_owned();
+        let wasm = canister_data_ref.wasm_store.asset_wasm_blob;
+        Ok(wasm)
     })
 }
 
@@ -156,12 +149,10 @@ fn get_form_metadata(
     index: u16 
 ) -> Result<FormMetadata, String> {
 
-    FORM_DATA.with(|form_list| {
-        let form_list =  form_list.borrow();
-        let form_data = form_list.get(&index).ok_or("no data for this index".to_string())?
-        .to_owned();
-    
-        Ok(form_data)
+    CANISTER_DATA.with(|canister_data| {
+        let canister_data_ref =  canister_data.borrow().to_owned();
+        let form_data = canister_data_ref.form_data.get(&index).ok_or("no data for this index".to_string())?;
+        Ok(form_data.clone())
     })
 }
 
@@ -249,7 +240,6 @@ fn revoke_commit_permission(id: Principal, user_id: Principal) -> Result<String,
 //     };
 //     // Install the Wasm code into the new canister
 //     let install_result = install_code(install_config).await;
-
 
 //     match install_result {
 //         Ok(_) => {}
@@ -351,33 +341,33 @@ async fn test_auth_user() -> Result<Vec<Principal>, String> {
 #[update]
 fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
 
-    CANISTER_STORE.with(|canister_store| {
+    CANISTER_DATA.with(|canister_data| {
         let mut minter_canister_vec: Vec<Principal> = Vec::new();
-        let canister_map = canister_store.borrow_mut();
+        let canister_map = canister_data.borrow_mut().canister_store.to_owned();
         if canister_map.to_owned().is_empty() {
             return Ok(minter_canister_vec);
         }
         for (_key, value) in canister_map.to_owned().iter() {
             minter_canister_vec.push(value.to_owned().minter_canister);
         }
-        return Ok(minter_canister_vec);  
+        Ok(minter_canister_vec)
     })
 }
 
 #[query]
 fn get_all_canisters() -> Result<Vec<CanisterIds>, String> {
 
-    CANISTER_STORE.with(|canister_store| {
+    CANISTER_DATA.with(|canister_data| {
         let mut canister_vec: Vec<CanisterIds> = Vec::new();
 
-        let canister_map = canister_store.borrow().to_owned();
+        let canister_map = canister_data.borrow().canister_store.to_owned();
         if canister_map.is_empty() {
             return Ok(canister_vec);
         }
         for (_key, value) in canister_map.iter() {
             canister_vec.push(value.to_owned());
         }
-        return Ok(canister_vec);  
+        Ok(canister_vec)
     })
 }
 
@@ -391,7 +381,7 @@ async fn filter_status(stat: Status) -> Result<Vec<Principal>, String> {
 
             for col in col_list{
                 let result =  call(col.minter_canister, "get_collection_status", (), ).await; 
-        
+
                 match result{
                     Ok(r) => {
                         let (res,): (Result<Status, String>,) = r;
@@ -425,19 +415,15 @@ async fn approve_collection(index: u16, approval: bool) -> Result<CanisterIds, S
     // if !is_controller(&user) {
     //     return Err("Unauthorised user".to_string());
     // } 
+    let canister_data_ref = CANISTER_DATA.with(|canister_data|{canister_data.borrow().to_owned()});
+    let form_list = canister_data_ref.form_data;
 
-    let form_list = FORM_DATA.with(|form_list_map| {
-        form_list_map.borrow().clone()
-    });
-
-    let _form_data = form_list.get(&index)
+    let form_data = form_list.get(&index)
         .ok_or("no form data for the index")?;
 
     if approval {
 
-        let wasms = WASM_STORE.with(|wasms| {
-            wasms.borrow().to_owned()
-        });
+        let wasms = canister_data_ref.wasm_store;
 
         let settings = CanisterSettings::default();
         let create_arg = CreateCanisterArgument{
@@ -484,6 +470,7 @@ async fn approve_collection(index: u16, approval: bool) -> Result<CanisterIds, S
         };
         // Install the Wasm code into the new canister
         let install_result = install_code(install_config).await;
+
 
         match install_result {
             Ok(_) => {}
@@ -540,11 +527,6 @@ async fn approve_collection(index: u16, approval: bool) -> Result<CanisterIds, S
         //remove
         let mut e:String = String::from("");
 
-        let form_data = FORM_DATA.with(|form_list_map| {
-           let form_list = form_list_map.borrow();
-           form_list.get(&index).unwrap().clone()
-        });
-
         let res =  call(minter_canister, "init_collection", (form_data,), ).await; 
             match res{
                 Ok(r) => {
@@ -556,33 +538,29 @@ async fn approve_collection(index: u16, approval: bool) -> Result<CanisterIds, S
         if e == "error".to_string(){
             return Err("error initializing struct".to_string());
         }
-
         
-        FORM_DATA.with(|form_list_map| {
-            let mut form_list = form_list_map.borrow_mut();
+        CANISTER_DATA.with(|canister_data| {
+            let mut canister_data_ref = canister_data.borrow_mut().to_owned();
 
-            let _form_entry = form_list.remove(&index);
-        });
+            let _form_entry = canister_data_ref.form_data.remove(&index);
 
-        let canister_id_data = CanisterIds{
-            asset_canister: asset_canister_id,
-            minter_canister
-        };
+            let canister_id_data = CanisterIds{
+                asset_canister: asset_canister_id,
+                minter_canister
+            };
 
-        CANISTER_STORE.with(|canister_store| {
-            let mut canister_map =  canister_store.borrow_mut();
-            canister_map.insert(minter_canister.clone(), canister_id_data.clone());
-        });
+            canister_data_ref.canister_store.insert(minter_canister.clone(), canister_id_data.clone());
+            *canister_data.borrow_mut() = canister_data_ref;
 
-        return Ok(canister_id_data);
+            Ok(canister_id_data)
+        })
     }
     else {
+         CANISTER_DATA.with(|canister_data| {
+            let mut canister_data_ref = canister_data.borrow_mut().to_owned();
 
-        FORM_DATA.with(|form_list_map| {
-            let mut form_list = form_list_map.borrow_mut();
-
-            let _form_entry = form_list.remove(&index);
-            // Ok(CanisterIds { asset_canister: (), minter_canister: () })
+            let _form_entry = canister_data_ref.form_data.remove(&index);
+            *canister_data.borrow_mut() = canister_data_ref;
             Err("collection rejected".to_string())
         })
     }
@@ -593,22 +571,15 @@ fn init_form_metadata(
     form_input: FormMetadata
 ) -> Result<String, String> {
 
-    FORM_DATA.with(|coll_data| {
-
-        // let form_data: FormMetadata = serde_json::from_slice(&form_input).unwrap();
-        let counter = COUNTER.with(|counter| {
-            *counter.borrow_mut() += 1;
-            *counter.borrow()
-        });
-        if !check_unique_name(form_input.name.clone()) {
-            return Err("collection name already taken".to_string());
-        }
-
-        FORM_DATA.with(|form_list| {
-            let mut form_list =  form_list.borrow_mut();
-            form_list.insert(counter, form_input);
-        });
+    // let form_data: FormMetadata = serde_json::from_slice(&form_input).unwrap();
+    CANISTER_DATA.with(|canister_data| {
+        let mut canister_data_ref = canister_data.borrow_mut().to_owned();
+        canister_data_ref.form_counter = canister_data_ref.form_counter.saturating_add(1);
+        let counter = canister_data_ref.form_counter;
     
+        canister_data_ref.form_data.insert(counter, form_input);
+    
+        *canister_data.borrow_mut() = canister_data_ref;
         Ok("form initiated succesfully".to_string())
     })
 }
@@ -618,8 +589,8 @@ fn init_form_metadata(
 fn get_form_list( 
 ) -> BTreeMap<u16, FormMetadata> {
 
-    FORM_DATA.with(|form_list| {
-        let form_list =  form_list.borrow().to_owned();
+    CANISTER_DATA.with(|canister_data| {
+        let form_list =  canister_data.borrow().form_data.to_owned();
         
         form_list
     })
@@ -645,7 +616,6 @@ fn check_unique_name(name: String) -> bool {
         }
     }
 }
-
 
 // todo
 // to add while deploying
