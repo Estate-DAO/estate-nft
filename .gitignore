@@ -1,4 +1,4 @@
-provision_canister/argument1
+*.blob
 .dfx/
 target/
 node_modules/
