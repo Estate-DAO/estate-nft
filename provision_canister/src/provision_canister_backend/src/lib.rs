@@ -78,11 +78,13 @@ fn update_key(
     }
 
     CANISTER_DATA.with(|canister_data| {   
-        let mut stored_str = canister_data.borrow_mut().stored_key.to_owned();     
-        stored_str = new_str;
-    });
+        let mut canister_data_ref =  canister_data.borrow().to_owned();
+        canister_data_ref.stored_key = new_str;       
+        *canister_data.borrow_mut() = canister_data_ref; 
+        Ok("key updated succesfully".to_string())
 
-    Ok("key updated succesfully".to_string())
+    })
+
 }
 
 #[query] 
