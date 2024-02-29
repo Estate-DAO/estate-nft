@@ -37,7 +37,7 @@ printf "( blob \"%s\")" "$asset_wasm_char_escaped" > asset_wasm.blob
 dfx canister call provision_canister_backend init_minter_wasm --argument-file minter_wasm.blob
 dfx canister call provision_canister_backend init_asset_wasm --argument-file asset_wasm.blob
 
-rm mint_wasm.blob
+rm minter_wasm.blob
 rm asset_wasm.blob
 
 can_id=$(jq -r '.provision_canister_backend.local' ./.dfx/local/canister_ids.json)
