@@ -11,7 +11,7 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 // use argon2::{Argon2, PasswordHash, PasswordVerifier, Variant, Version};
 
-use state::{AdditionalMetadata, FormMetadata, FinancialDetails, MarketDetails, PropertyDetails, SaleData, SaleStatus, Status, CanisterIds};
+use state::{AdditionalMetadata, CanisterIds, FinancialDetails, FormMetadata, MarketDetails, Metadata, PropertyDetails, SaleData, SaleStatus, Status};
 
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
@@ -631,6 +631,83 @@ fn get_caller() -> Result<Principal, String> {
         Ok(caller)  
     } 
 
+}
+
+#[update]
+async fn get_escrow_balance(minter: Principal, user_id: Principal) -> Result<u64, String> {  
+
+    let res =  call(minter, "get_balance", (user_id,), ).await; 
+    match res{
+        Ok(r) => {
+            let (res,): (Result<u64, String>,) = r;
+            res
+        }, 
+        Err(_) =>{
+            Err("error".to_string())
+        }
+    }
+}
+
+
+#[update]
+async fn sale_confirmed_mint(minter: Principal) -> Result<String, String> {  
+
+    let res =  call(minter, "sale_confirmed_mint", (), ).await; 
+    match res{
+        Ok(r) => {
+            let (res,): (Result<String, String>,) = r;
+            res
+        }, 
+        Err(_) =>{
+            Err("error".to_string())
+        }
+    }
+}
+
+
+#[update]
+async fn sale_confirmed_refund(minter: Principal) -> Result<String, String> {  
+
+    let res =  call(minter, "sale_confirmed_refund", (), ).await; 
+    match res{
+        Ok(r) => {
+            let (res,): (Result<String, String>,) = r;
+            res
+        }, 
+        Err(_) =>{
+            Err("error".to_string())
+        }
+    }
+}
+
+#[update]
+async fn get_nft_metadata(minter: Principal, token_id: String) -> Result<Metadata, String> {  
+
+    let res =  call(minter, "get_metadata", (token_id,), ).await; 
+    match res{
+        Ok(r) => {
+            let (res,): (Result<Metadata, String>,) = r;
+            res
+        }, 
+        Err(_) =>{
+            Err("error".to_string())
+        }
+    }
+}
+
+#[update]
+async fn get_sale_data(minter: Principal, token_id: String) -> Result<SaleData, String> {  
+
+    let res =  call(minter, "get_sale_data", (token_id,), ).await; 
+    match res{
+        Ok(r) => {
+            let (res,): (Result<SaleData, String>,) = r;
+            res
+        }, 
+        Err(_) =>{
+            Err("error".to_string())
+        }
+    }
 }
 
 // Enable Candid export

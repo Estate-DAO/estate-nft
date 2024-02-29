@@ -2,8 +2,7 @@ use ic_ledger_types::Timestamp;
 use serde::Serialize;
 use candid::{types::{number::Nat, principal}, CandidType, Deserialize, Principal};
 use std::collections::HashMap;
-// use icrc_ledger_types::icrc1::account::Account;
- 
+use icrc_ledger_types::icrc1::account::Account; 
  
 impl Default for Status {
     fn default() -> Self {
@@ -110,18 +109,6 @@ pub struct MarketDetails {
     pub description: Option<String>,
 }
 
-#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
-pub struct SaleData{
-    pub nft_token_id: String,
-    pub buyer: Principal,
-    //tbd
-    //required only if seller_principal is updatable
-    // pub seller_principal: Principal,
-    pub amount: u64,
-    pub status: SaleStatus,
-    pub time: Timestamp,
-}
-
 #[derive(Clone, Debug, PartialEq, CandidType, Deserialize, Serialize)]
 pub enum SaleStatus{
     Init,
@@ -133,4 +120,29 @@ pub enum SaleStatus{
 pub struct CanisterIds{
     pub asset_canister: Principal,
     pub minter_canister: Principal,
+}
+
+// NFTMetadata + CollectionMetadata
+#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
+pub struct Metadata {
+    pub nft_symbol: String,
+    pub nft_token_id: String,
+    pub nft_uri: String, //image   
+    pub collection_name: String,
+    pub desc: String,
+    // pub royalty: RoyaltyData,
+    pub total_supply: u64,
+    pub supply_cap: u64,
+}
+
+#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
+pub struct SaleData{
+    pub nft_token_id: String,
+    pub buyer: Account,
+    //tbd
+    //required only if seller_principal is updatable
+    // pub seller_principal: Principal,
+    pub amount: u64,
+    pub status: SaleStatus,
+    pub time: Timestamp,
 }

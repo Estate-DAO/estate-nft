@@ -692,9 +692,9 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
 
 #[update] 
 fn sale_confirmed_mint() -> Result<String, String> {
-    if !is_controller(&caller()) {
-        return Err("UnAuthorised Access".into());
-    }
+    // if !is_controller(&caller()) {
+    //     return Err("UnAuthorised Access".into());
+    // }
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
@@ -870,9 +870,9 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
 #[update] 
 async fn sale_confirmed_refund() -> Result<String, String> {
 
-    if !is_controller(&caller()) {
-        return Err("UnAuthorised Access".into());
-    }
+    // if !is_controller(&caller()) {
+    //     return Err("UnAuthorised Access".into());
+    // }
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
@@ -926,9 +926,8 @@ fn get_sale_data(token_id : String) -> Result<SaleData, String> {
 #[query(composite = true)]
 async fn create_escrow_accountid(caller_account: Principal) -> Result<AccountIdentifier, String> {
     let canister_id = ic_cdk::api::id();
-    let minter_canister_id = Principal::from_text("b77ix-eeaaa-aaaaa-qaada-cai").unwrap();
 
-    let account = AccountIdentifier::new(&minter_canister_id, &Subaccount::from(caller_account));
+    let account = AccountIdentifier::new(&canister_id, &Subaccount::from(caller_account));
 
     Ok(account)
 }
