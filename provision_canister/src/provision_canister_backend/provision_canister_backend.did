@@ -25,7 +25,7 @@ type FormMetadata = record {
   additional_metadata : opt AdditionalMetadata;
   name : text;
   property_images : vec text;
-  primary_sale_price : nat64;
+  price : nat64;
 };
 type InvestmentFinancials = record {
   initial_maintenance_reserve : opt float32;

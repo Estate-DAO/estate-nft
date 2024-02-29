@@ -1,7 +1,7 @@
 mod state;
 
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
-use ic_cdk::api::time;
+use ic_cdk::api::{is_controller, time};
 use icrc_ledger_types::icrc2::approve;
 // use icrc_ledger_types::icrc1::transfer::TransferError;
 // use icrc_ledger_types::icrc1::account::Subaccount;
@@ -543,18 +543,6 @@ fn collection_image() -> Vec<String>{
     col_data.property_images
 }
 
-
-#[query(composite = true)]
-async fn create_accountid(caller_account: Principal) -> Result<String, String> {
-    let canister_id = ic_cdk::api::id();
-
-    let ledger_canister_id = Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap();
-    let account = AccountIdentifier::new(&canister_id, &Subaccount::from(caller_account));
-
-    let balance_args = ic_ledger_types::AccountBalanceArgs { account };
-    Ok(account.to_string())
-}
-
 #[update]
 async fn primary_sale(user: Principal) -> Result<String, String> {
     // let buyer_id = caller();
@@ -704,6 +692,10 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
 
 #[update] 
 fn sale_confirmed_mint() -> Result<String, String> {
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
+
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
     let user_balance = canister_data_ref.user_balance;
@@ -863,6 +855,8 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
                 CANISTER_DATA.with(|canister_data| {
                     let mut canister_data_ref= canister_data.borrow_mut().to_owned();
                     canister_data_ref.user_balance.insert(user, (0, *used_bal));
+
+                    *canister_data.borrow_mut() = canister_data_ref;
                 });
         }   
         None => {
@@ -873,9 +867,13 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
 
 }
 
-
 #[update] 
 async fn sale_confirmed_refund() -> Result<String, String> {
+
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
+
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
     let user_balance = canister_data_ref.user_balance;
@@ -900,6 +898,17 @@ fn get_total_invested() -> u64 {
     total_invest
 }
 
+#[query(composite = true)]
+async fn get_user_sale_balance(user_account: Principal) -> Result<(u64, u64), String> {
+
+    let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().to_owned() });
+    let user_balance_map = canister_data_ref.user_balance;
+    let user_balance = user_balance_map.get(&user_account).ok_or("No data found for user")?;
+
+    Ok(*user_balance)
+}
+
 #[query] 
 fn get_sale_data(token_id : String) -> Result<SaleData, String> {
 
@@ -912,6 +921,25 @@ fn get_sale_data(token_id : String) -> Result<SaleData, String> {
 
         Ok(sales_data.clone())
     })
+}
+
+#[query(composite = true)]
+async fn create_escrow_accountid(caller_account: Principal) -> Result<AccountIdentifier, String> {
+    let canister_id = ic_cdk::api::id();
+    let minter_canister_id = Principal::from_text("b77ix-eeaaa-aaaaa-qaada-cai").unwrap();
+
+    let account = AccountIdentifier::new(&minter_canister_id, &Subaccount::from(caller_account));
+
+    Ok(account)
+}
+
+#[query(composite = true)]
+async fn create_accountid(caller_account: Principal) -> Result<AccountIdentifier, String> {
+    let canister_id = ic_cdk::api::id();
+
+    let account = AccountIdentifier::new(&caller_account, &DEFAULT_SUBACCOUNT);
+
+    Ok(account)
 }
 
 ic_cdk::export_candid!();
