@@ -1,0 +1,8 @@
+provision_canister/argument1
+.dfx/
+target/
+node_modules/
+dist/
+declarations/
+.env
+.DS_Store
