@@ -1,0 +1,40 @@
+name: Deploy
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "estate_dao_nft/**"
+      - "provision_canister/**"
+      - "scripts/upload_wasm_ic.sh"
+      - ".github/workflows/deploy.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-client-deploy-dapp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dfx
+        uses: dfinity/setup-dfx@main
+        with:
+          dfx-version: "0.16.1"
+
+      - name: Confirm successful installation
+        run: dfx --version
+
+      - name: Setup env to deploy
+        run: |
+          touch actions_identity.pem
+          echo "${{ secrets.ESTATE_DAO_CANISTER_CONTROLLER_PRIVATE_KEY }}" > actions_identity.pem
+          dfx identity import --storage-mode plaintext actions actions_identity.pem
+          rm actions_identity.pem
+          dfx identity use actions
+
+      - name: Run deploy script
+        working-directory: ./scripts
+        run: ./scripts/upload_wasm_ic.sh
