@@ -3,7 +3,10 @@
     "provision_canister_backend": {
       "candid": "src/provision_canister_backend/provision_canister_backend.did",
       "package": "provision_canister_backend",
-      "type": "rust"
+      "type": "rust",
+      "declarations": {
+        "output": "../declarations/provision_canister_backend"
+      }
     },
     "provision_canister_frontend": {
       "dependencies": ["provision_canister_backend"],

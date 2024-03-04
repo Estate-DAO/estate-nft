@@ -3,12 +3,13 @@
     "estate_dao_nft_backend": {
       "candid": "src/estate_dao_nft_backend/estate_dao_nft_backend.did",
       "package": "estate_dao_nft_backend",
-      "type": "rust"
+      "type": "rust",
+      "declarations": {
+        "output": "../declarations/estate_dao_nft_backend"
+      }
     },
     "estate_dao_nft_frontend": {
-      "dependencies": [
-        "estate_dao_nft_backend"
-      ],
+      "dependencies": ["estate_dao_nft_backend"],
       "frontend": {
         "entrypoint": "src/estate_dao_nft_frontend/src/index.html"
       },
