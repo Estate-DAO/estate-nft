@@ -31,7 +31,7 @@ pub enum Status{
 pub struct CollectionMetadata {
     pub name: String,
     pub desc: String,
-    pub symbol: String,
+    // pub symbol: String,
     pub total_supply: u64,
     pub supply_cap: u64,
     pub price: u64,
@@ -123,7 +123,7 @@ pub struct MarketDetails {
 pub struct FormMetadata {
     pub name: String,
     pub desc: String,
-    pub symbol: String,
+    // pub symbol: String,
     pub supply_cap: u64,
     pub price: u64,
     pub image_uri: String,

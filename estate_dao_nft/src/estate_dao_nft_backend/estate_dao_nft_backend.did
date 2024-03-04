@@ -17,7 +17,6 @@ type CollectionMetadata = record {
   price : nat64;
   is_initialised : bool;
   total_supply : nat64;
-  symbol : text;
 };
 type FinancialDetails = record {
   total_monthly_cost : opt float32;
@@ -37,7 +36,6 @@ type FormMetadata = record {
   name : text;
   property_images : vec text;
   price : nat64;
-  symbol : text;
 };
 type InvestmentFinancials = record {
   initial_maintenance_reserve : opt float32;

@@ -84,7 +84,7 @@ fn init_collection(
                 CollectionMetadata{
                     name: form_data.name,
                     desc: form_data.desc,
-                    symbol: form_data.symbol,
+                    // symbol: form_data.symbol,
                     total_supply: 0,
                     price: form_data.price,
                     image_uri: form_data.image_uri,

@@ -5,6 +5,7 @@ type AdditionalMetadata = record {
   financial_details : opt FinancialDetails;
   market_details : opt MarketDetails;
 };
+type ApprovedResponse = variant { StrResp : text; CanisterId : CanisterIds };
 type CanisterIds = record {
   minter_canister : principal;
   asset_canister : principal;
@@ -75,7 +76,7 @@ type RentFinancials = record {
   projected_rent : opt float32;
   monthly_utiliiies : opt float32;
 };
-type Result = variant { Ok : CanisterIds; Err : text };
+type Result = variant { Ok : ApprovedResponse; Err : text };
 type Result_1 = variant { Ok : vec principal; Err : text };
 type Result_2 = variant { Ok : vec CanisterIds; Err : text };
 type Result_3 = variant { Ok : vec nat8; Err : text };
