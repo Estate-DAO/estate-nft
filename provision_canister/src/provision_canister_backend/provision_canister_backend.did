@@ -120,7 +120,6 @@ service : {
   revoke_commit_permission : (principal, principal) -> (Result_8);
   sale_confirmed_mint : (principal) -> (Result_8);
   sale_confirmed_refund : (principal) -> (Result_8);
-  test_auth_user : () -> (Result_1);
   update_key : (text) -> (Result_8);
   verify_key : (text) -> (bool) query;
 }

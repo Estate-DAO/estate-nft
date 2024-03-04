@@ -18,7 +18,7 @@ pub enum Status{
     Live,
     Ended,
 }
- 
+
 //Collection level metadata
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
 pub struct FormMetadata {
@@ -29,7 +29,7 @@ pub struct FormMetadata {
     pub image_uri: String,
     pub property_images: Vec<String>,
     pub additional_metadata: Option<AdditionalMetadata>,
-    pub owner: String,
+    pub owner: String
 }
  
 //Additional metadata
@@ -116,7 +116,7 @@ pub enum SaleStatus{
     Complete
 }
 
-#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, CandidType, Deserialize, Serialize)]
 pub struct CanisterIds{
     pub asset_canister: Principal,
     pub minter_canister: Principal,
@@ -145,4 +145,10 @@ pub struct SaleData{
     pub amount: u64,
     pub status: SaleStatus,
     pub time: Timestamp,
+}
+
+#[derive(Clone, Debug, PartialEq, CandidType, Deserialize, Serialize)]
+pub enum ApprovedResponse {
+    CanisterId(CanisterIds),
+    StrResp(String)
 }

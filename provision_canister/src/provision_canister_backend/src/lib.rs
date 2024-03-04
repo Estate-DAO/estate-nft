@@ -1,17 +1,17 @@
 mod state;
 
-use ic_cdk::api::is_controller;
+use ic_cdk::api::{self, is_controller};
 use ic_cdk::api::management_canister::main::{create_canister, install_code, CreateCanisterArgument, CanisterInstallMode, InstallCodeArgument, CanisterSettings};
 use ic_cdk::api::call::{call, call_with_payment, CallResult,RejectionCode };
 use candid::{CandidType, Principal, Deserialize};
 use ic_cdk::api::management_canister::provisional::CanisterIdRecord;
-use ic_cdk::{caller, notify, query, update};
+use ic_cdk::{caller, notify, query, storage, update};
 use serde::Serialize;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 // use argon2::{Argon2, PasswordHash, PasswordVerifier, Variant, Version};
 
-use state::{AdditionalMetadata, CanisterIds, FinancialDetails, FormMetadata, MarketDetails, Metadata, PropertyDetails, SaleData, SaleStatus, Status};
+use state::{AdditionalMetadata, ApprovedResponse, CanisterIds, FinancialDetails, FormMetadata, MarketDetails, Metadata, PropertyDetails, SaleData, SaleStatus, Status};
 
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
@@ -411,7 +411,7 @@ async fn filter_status(stat: Status) -> Result<Vec<Principal>, String> {
 
 
 #[update]
-async fn approve_collection(index: u16, approval: bool) -> Result<CanisterIds, String> {
+async fn approve_collection(index: u16, approval: bool) -> Result<ApprovedResponse, String> {
 
     let user = caller();
     // if !is_controller(&user) {
@@ -427,7 +427,13 @@ async fn approve_collection(index: u16, approval: bool) -> Result<CanisterIds, S
 
         let wasms = canister_data_ref.wasm_store;
 
-        let settings = CanisterSettings::default();
+        let settings = CanisterSettings {
+            controllers: Some(vec![ api::id()]),
+            compute_allocation: None,
+            memory_allocation: None,
+            freezing_threshold: None,
+            reserved_cycles_limit: None
+        };
         let create_arg = CreateCanisterArgument{
             settings: Some(settings)
         };
@@ -483,7 +489,13 @@ async fn approve_collection(index: u16, approval: bool) -> Result<CanisterIds, S
         }
 
         // create minter canister 
-        let settings = CanisterSettings::default();
+        let settings = CanisterSettings {
+            controllers: Some(vec![ api::id()]),
+            compute_allocation: None,
+            memory_allocation: None,
+            freezing_threshold: None,
+            reserved_cycles_limit: None
+        };
         let create_arg = CreateCanisterArgument{
             settings: Some(settings)
         };
@@ -554,7 +566,7 @@ async fn approve_collection(index: u16, approval: bool) -> Result<CanisterIds, S
             canister_data_ref.canister_store.insert(minter_canister.clone(), canister_id_data.clone());
             *canister_data.borrow_mut() = canister_data_ref;
 
-            Ok(canister_id_data)
+            Ok(ApprovedResponse::CanisterId(canister_id_data))
         })
     }
     else {
@@ -563,7 +575,7 @@ async fn approve_collection(index: u16, approval: bool) -> Result<CanisterIds, S
 
             let _form_entry = canister_data_ref.form_data.remove(&index);
             *canister_data.borrow_mut() = canister_data_ref;
-            Err("collection rejected".to_string())
+            Ok(ApprovedResponse::StrResp(("collection rejected".to_string())))
         })
     }
 }
@@ -573,7 +585,6 @@ fn init_form_metadata(
     form_input: FormMetadata
 ) -> Result<String, String> {
 
-    // let form_data: FormMetadata = serde_json::from_slice(&form_input).unwrap();
     CANISTER_DATA.with(|canister_data| {
         let mut canister_data_ref = canister_data.borrow_mut().to_owned();
         canister_data_ref.form_counter = canister_data_ref.form_counter.saturating_add(1);
@@ -712,3 +723,30 @@ async fn get_sale_data(minter: Principal, token_id: String) -> Result<SaleData, 
 
 // Enable Candid export
 ic_cdk::export_candid!();
+
+//pre upgrade
+#[ic_cdk::pre_upgrade]
+fn pre_upgrade() {
+    CANISTER_DATA.with(|canister_data_ref_cell| {
+        let canister_data = canister_data_ref_cell.take();
+
+        storage::stable_save((canister_data,)).ok();
+    });
+}
+
+
+//post upgrade
+#[ic_cdk::post_upgrade]
+fn post_upgrade() {
+    match storage::stable_restore() {
+        Ok((canister_data,)) => {
+            CANISTER_DATA.with(|canister_data_ref_cell| {
+                *canister_data_ref_cell.borrow_mut() = canister_data;
+                // canister_data_ref_cell.borrow_mut().known_principal_ids.insert(KnownPrincipalType::CanisterIdSnsGovernance, Principal::from_str(GOVERNANCE_CANISTER_ID).unwrap());
+            });
+        }
+        Err(_) => {
+            panic!("Failed to restore canister data from stable memory");
+        }
+    }
+}

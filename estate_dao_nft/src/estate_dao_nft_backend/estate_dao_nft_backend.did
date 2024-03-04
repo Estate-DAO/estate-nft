@@ -17,6 +17,7 @@ type CollectionMetadata = record {
   price : nat64;
   is_initialised : bool;
   total_supply : nat64;
+  symbol : text;
 };
 type FinancialDetails = record {
   total_monthly_cost : opt float32;
@@ -36,6 +37,7 @@ type FormMetadata = record {
   name : text;
   property_images : vec text;
   price : nat64;
+  symbol : text;
 };
 type InvestmentFinancials = record {
   initial_maintenance_reserve : opt float32;
@@ -60,7 +62,7 @@ type Metadata = record {
   collection_name : text;
   nft_uri : text;
   total_supply : nat64;
-  nft_symbol : text;
+  symbol : text;
 };
 type PropertyDetails = record {
   year_built : opt nat32;
@@ -139,7 +141,6 @@ service : {
   mint : (text, text, text, principal) -> (Result);
   mint_approved_nfts : (principal) -> (Result);
   primary_sale : (principal) -> (Result);
-  primary_sale_mint : (text) -> (Result);
   refund_user_tokens : (principal) -> (Result);
   sale_confirmed_mint : () -> (Result);
   sale_confirmed_refund : () -> (Result);

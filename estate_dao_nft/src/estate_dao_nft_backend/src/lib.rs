@@ -2,6 +2,7 @@ mod state;
 
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
 use ic_cdk::api::{is_controller, time};
+use ic_cdk::storage;
 use icrc_ledger_types::icrc2::approve;
 // use icrc_ledger_types::icrc1::transfer::TransferError;
 // use icrc_ledger_types::icrc1::account::Subaccount;
@@ -9,6 +10,8 @@ use state::{AdditionalMetadata, CollectionMetadata, FinancialDetails, FormMetada
 use serde::Serialize;
 
 use ic_cdk::{api::call::call, query, update, init, caller};
+use std::collections::btree_map::Keys;
+use std::ops::Index;
 use std::{clone, string};
 use std::{cell::RefCell};
 use std::collections::{BTreeMap, HashMap};
@@ -24,6 +27,7 @@ use icrc_ledger_types::{
     }
 };
 
+pub const LEDGER_CANISTER_ID: &str = "ryjl3-tyaaa-aaaaa-aaaba-cai";
 const ICP_FEE: u64 = 10_000;
 
 type NFTList = BTreeMap<String, NFTMetadata>;
@@ -41,22 +45,16 @@ pub struct CanisterData {
     pub sales_data: SaleList,
     pub total_invested: u64,
     pub user_balance: UserBalance,
+    pub sale_refund_reprocess: Vec<Principal>,
+    pub sale_mint_reprocess: Vec<Principal>,
 }
 
 thread_local! {
     static CANISTER_DATA: RefCell<CanisterData> = RefCell::default()
-    // static NFT_STORE: RefCell<NFTList> = RefCell::default();
-    // // static COLLECTION_DATA: RefCell<CollectionMetadata> = RefCell::default();
-    // static COUNTER: RefCell<u16> = RefCell::new (0u16);
-    // static TOKEN_OWNER: RefCell<TokenOwnerMap> = RefCell::default();
-    // static TOKEN_LIST: RefCell<UserTokensList> = RefCell::default();
-    // static SALE_DATA: RefCell<SaleList> = RefCell::default();
-    // static TOTAL_INVESTED: RefCell<u64> = RefCell::new (0u64);
 }
 
 
 //collection specific data
-// #[update(guard = "allow_only_authorized_principal")] 
 #[update]
 fn init_collection(
     form_data: FormMetadata
@@ -68,7 +66,6 @@ fn init_collection(
         let mut canister_data_ref = canister_data.borrow_mut();
 
         if canister_data_ref.collection_data.is_initialised == true {
-            // return Err("collection owner not initialized".to_string());
             Err("collection already initialised".to_string())
         }
 
@@ -87,6 +84,7 @@ fn init_collection(
                 CollectionMetadata{
                     name: form_data.name,
                     desc: form_data.desc,
+                    symbol: form_data.symbol,
                     total_supply: 0,
                     price: form_data.price,
                     image_uri: form_data.image_uri,
@@ -160,7 +158,7 @@ fn update_market_details(
     market_det: MarketDetails
 ) -> Result<String, String> {
 
-    CANISTER_DATA.with(|canister_data| {
+    CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
         
         let mut canister_data_ref= canister_data.borrow_mut().to_owned();
         let mut col_data = canister_data_ref.collection_data;
@@ -182,7 +180,6 @@ fn update_market_details(
 
             canister_data_ref.collection_data = col_data;
             *canister_data.borrow_mut() = canister_data_ref;
-
 
             Ok("market details added succesfully".to_string())
         }
@@ -256,39 +253,6 @@ fn update_property_details(
         Ok("additional details succesfully".to_string())
     })
 }
-
-// //collection specific data
-// // #[update(guard = "allow_only_authorized_principal")] 
-// // #[update] 
-// // fn init_additional_metadata( 
-// //     add_metadata: AdditionalMetadata,
-// //     prop_details: PropDetails
-// // ) -> Result<String, String> {
-
-// //     COLLECTION_DATA.with(|coll_data| {
-
-// //         let mut col_data= coll_data.borrow_mut().to_owned();
-
-// //         if col_data.additional_metadata.is_some() {
-// //             return Err("additional details already added".to_string());
-// //         }
-// //         if col_data.prop_details.is_some() {
-// //             return Err("property details already added".to_string());
-// //         }
-// //         col_data.additional_metadata = Some(add_metadata);
-
-// //         col_data.prop_details = Some(prop_details);
-
-// //         *coll_data.borrow_mut() = col_data;
-
-// //         //remove
-// //         let _collection_data_test = COLLECTION_DATA.with(|coll_data| { 
-// //             coll_data.borrow().to_owned() }); 
-
-// //         return Ok("collection created succesfully".to_string());
-
-// //     })
-// // }
 
 
 // //collection specific data
@@ -414,20 +378,18 @@ fn get_property_details() -> Result<PropertyDetails, String> {
 }
 
 // TODO update total_minted in collectionMetadata
-// #[update(guard = "allow_only_canister")] 
-#[update]
+#[update(guard = "allow_only_canister")] 
 fn mint(token_id: String, symbol: String, uri: String, owner: Principal) -> Result<String, String> {
 
     CANISTER_DATA.with(|canister_data| {
         
         let mut canister_data_ref= canister_data.borrow_mut().to_owned();
-        // let mut col_data = canister_data_ref.collection_data;
         let mut token_owner_map = canister_data_ref.token_owner;
         let mut nft_map = canister_data_ref.nft_store;
 
         let owner_account = Account::from(owner);
         token_owner_map.insert(token_id.clone(), owner_account);
-        // });    
+
         
         // TOKEN_LIST.with(|user_token_list| {
         //     let binding = user_token_list.borrow_mut();
@@ -486,12 +448,12 @@ fn get_metadata(token_id : String) -> Result<Metadata, String> {
 
         let nft_map = canister_data_ref.nft_store;
         let nft_data = nft_map.get(&token_id);
-        let nft_data = nft_data.ok_or("NFT not forund")?.to_owned();
+        let nft_data = nft_data.ok_or("NFT not found")?.to_owned();
 
         let col_data = canister_data_ref.collection_data;
 
         let metadata = Metadata{
-            nft_symbol: nft_data.nft_symbol,
+            symbol: nft_data.nft_symbol,
             nft_token_id: nft_data.nft_token_id,
             nft_uri: nft_data.nft_uri,
             collection_name: col_data.name,
@@ -551,7 +513,7 @@ async fn primary_sale(user: Principal) -> Result<String, String> {
     let collection_data = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().collection_data.to_owned() });
 
-    let ledger_canister_id = Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap();
+    let ledger_canister_id = Principal::from_text(LEDGER_CANISTER_ID).unwrap();
 
     // new token_id
     let token_counter = collection_data.total_supply;
@@ -561,7 +523,6 @@ async fn primary_sale(user: Principal) -> Result<String, String> {
     let account = AccountIdentifier::new(&canister_id, &Subaccount::from(user));
 
     let balance_args = ic_ledger_types::AccountBalanceArgs { account };
-    // return Ok(balance_args)
     let balance = ic_ledger_types::account_balance(ledger_canister_id, balance_args)
         .await
         .map_err(|e| e.1);
@@ -608,11 +569,9 @@ async fn primary_sale(user: Principal) -> Result<String, String> {
                     let mut canister_data_ref= canister_data.borrow_mut();
                     canister_data_ref.user_balance.insert(user, (current_balance, 0));
                 });
-
                 return Ok("balance updated for new user".to_string());
-
             }
-            return  Err("no transfer".to_string());
+            return  Err("no transfered or amount less than NFT price".to_string());
         },
     }
 }
@@ -626,8 +585,7 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
 
-        let nft_price = canister_data_ref.collection_data.price;
-
+    let nft_price = canister_data_ref.collection_data.price;
 
     let total_minted_nfts =  canister_data_ref.collection_data.total_supply;
     let mut counter = total_minted_nfts.saturating_add(1);
@@ -645,24 +603,31 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
             ic_cdk::println!("mint allowance 22: {}", mint_allowance);
         }
         _ => {
-            return Err("error".to_string());
+            return Err("no balance found for user".to_string());
         }  
     }
 
-    let symbol = canister_data_ref.collection_data.name.clone() +  &counter.to_string();
     let uri = canister_data_ref.collection_data.image_uri;
 
     //check for approved mints remaining    
     // let approved_mints = 5;
 
     for _mints in 0 .. mint_allowance{
-        let symbol = canister_data_ref.collection_data.name.clone() +  &counter.to_string();
+        let symbol = canister_data_ref.collection_data.name.clone() + "_" + &counter.to_string();
+
+        let collection_data_ref = CANISTER_DATA.with(|canister_data| { 
+            canister_data.borrow().collection_data.to_owned()});
+
+        if collection_data_ref.total_supply.saturating_add(1) >= collection_data_ref.supply_cap {
+            return Err("supply cap limit reached".to_string());
+        }    
 
         CANISTER_DATA.with(|canister_data| {
 
             let mut canister_data_ref = canister_data.borrow().to_owned();
-            canister_data_ref.total_invested = canister_data_ref.total_invested.saturating_add(nft_price);
+            // canister_data_ref.total_invested = canister_data_ref.total_invested.saturating_add(nft_price);
             canister_data_ref.collection_data.total_supply = canister_data_ref.collection_data.total_supply.saturating_add(1);
+
             counter = canister_data_ref.collection_data.total_supply;
 
             //update user balance
@@ -683,8 +648,7 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
 
             *canister_data.borrow_mut() = canister_data_ref;
         });   
-        let mint_res = mint(counter.to_string(), symbol.clone(), uri.clone(), user_account);
- 
+        let _mint_res = mint(counter.to_string(), symbol.clone(), uri.clone(), user_account);
     }
 
     Ok("success".to_string())
@@ -692,19 +656,45 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
 
 #[update] 
 fn sale_confirmed_mint() -> Result<String, String> {
-    // if !is_controller(&caller()) {
-    //     return Err("UnAuthorised Access".into());
-    // }
+
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
+
+    if !canister_data_ref.sale_mint_reprocess.is_empty(){
+        for (index, key) in canister_data_ref.sale_mint_reprocess.iter().enumerate() {
+            let res = mint_approved_nfts(*key);
+            match res {
+                Ok(_val) => {
+                    CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+                        let mut canister_data_ref= canister_data.borrow().to_owned();
+                        // let mut col_data = canister_data_ref.collection_data;
+                        let _removed_val = canister_data_ref.sale_mint_reprocess.remove(index);
+                        *canister_data.borrow_mut() = canister_data_ref;
+                    });
+                },
+                Err(_error_str) => { 
+                    continue;
+                }
+            }
+        }
+    }
+
     let user_balance = canister_data_ref.user_balance;
-    for (key, value) in user_balance.iter() {
+    for (key, _value) in user_balance.iter() {
         let res = mint_approved_nfts(*key);
         match res {
             Ok(_val) => {continue;},
-            Err(error_str) => { 
-                return Err(error_str);
+            Err(_error_str) => { 
+                CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+                    let mut canister_data_ref= canister_data.borrow().to_owned();
+                    // let mut col_data = canister_data_ref.collection_data;
+                    canister_data_ref.sale_mint_reprocess.push(*key);
+                    *canister_data.borrow_mut() = canister_data_ref;
+                });
             }
         }
     }
@@ -739,47 +729,11 @@ async fn get_payment_details(caller_account: Principal) -> Result<(String, u64, 
     Ok((account_id.to_string(), nft_price, user_stored_balance))
 }
 
-
-//TBD
-#[update] 
-fn primary_sale_mint(token_id : String) -> Result<String, String> {
-
-    let buyer_id = caller();
-    CANISTER_DATA.with(|canister_data| {
-        let mut canister_data_ref = canister_data.borrow().to_owned();
-
-        let mut sales_data = canister_data_ref.sales_data;
-        
-        let mut sale_data = sales_data.get_mut(&token_id).ok_or("unable fetch no sale exist for this token".to_string())?;
-
-        if sale_data.status == SaleStatus::Complete || sale_data.status == SaleStatus::Init {
-            return Err("sale either complete or not inintialized".to_string());    
-        }
-        
-        //new token id
-        // let counter = canister_data_ref.collection_data.total_supply;
-
-        // let collection_data = COLLECTION_DATA.with(|coll_data| { 
-        //     coll_data.borrow().to_owned() }); 
-
-        //mint function
-        let symbol = canister_data_ref.collection_data.name.clone() +  &token_id;
-        let uri = canister_data_ref.collection_data.image_uri.clone();
-        let mint_res = mint(token_id, symbol, uri, buyer_id);
-
-        sale_data.status = SaleStatus::Complete;
-
-        canister_data_ref.sales_data = sales_data;
-        *canister_data.borrow_mut() = canister_data_ref;
-        mint_res
-    })
-}
-
 #[query(composite = true)]
 async fn get_balance(user_account: Principal) -> Result<u64, String> {
     let canister_id = ic_cdk::api::id();
 
-    let ledger_canister_id = Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap();
+    let ledger_canister_id = Principal::from_text(LEDGER_CANISTER_ID).unwrap();
     // let account = AccountIdentifier::new(&caller_account, &principal_to_subaccount(&caller_account));
     let account = AccountIdentifier::new(&canister_id, &Subaccount::from(user_account));
 
@@ -804,8 +758,7 @@ async fn get_balance(user_account: Principal) -> Result<u64, String> {
 async fn refund_user_tokens(user : Principal) -> Result<String, String> {
     let canister_id = ic_cdk::api::id();
 
-    let ledger_canister_id = Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap();
-    // let account = AccountIdentifier::new(&caller_account, &principal_to_subaccount(&caller_account));
+    let ledger_canister_id = Principal::from_text(LEDGER_CANISTER_ID).unwrap();
     let account = AccountIdentifier::new(&canister_id, &Subaccount::from(user));
 
     let balance_args = ic_ledger_types::AccountBalanceArgs { account };
@@ -824,12 +777,9 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
         },
     }
     let escrow_token_balance = token_balance.e8s();
-        
-    // let escrow_subaccount = Subaccount::from(user);
-    // let escrow_account = Account{
-    //     owner: canister_id,
-    //     subaccount: Some(escrow_subaccount.0)
-    // };
+    if escrow_token_balance == 0 || escrow_token_balance < ICP_FEE{ 
+        return Ok("no balance for user".to_string());
+    }
 
     let transfer_args = TransferArgs {
         memo: ic_ledger_types::Memo(0),
@@ -840,8 +790,8 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
         created_at_time: None,
     };
 
-    //try with transfer function of ic_ledger_types
-    let res = ic_ledger_types::transfer(ledger_canister_id, transfer_args)
+    //transfer function of ic_ledger_types
+    let _res = ic_ledger_types::transfer(ledger_canister_id, transfer_args)
         .await
         .expect("call to ledger failed")
         .expect("transfer failed");
@@ -851,7 +801,7 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
 
     let user_balance = user_data.get(&user);
     match  user_balance{
-        Some((stored_bal, used_bal)) => {
+        Some((_stored_bal, used_bal)) => {
                 CANISTER_DATA.with(|canister_data| {
                     let mut canister_data_ref= canister_data.borrow_mut().to_owned();
                     canister_data_ref.user_balance.insert(user, (0, *used_bal));
@@ -870,23 +820,48 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
 #[update] 
 async fn sale_confirmed_refund() -> Result<String, String> {
 
-    // if !is_controller(&caller()) {
-    //     return Err("UnAuthorised Access".into());
-    // }
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
-    let user_balance = canister_data_ref.user_balance;
-    for (key, value) in user_balance.iter() {
-        let res = refund_user_tokens(*key).await;
-        match res {
-            Ok(_val) => {continue;},
-            Err(error_str) => { 
-                return Err(error_str);
+
+    if !canister_data_ref.sale_refund_reprocess.is_empty(){
+        for (index, key) in canister_data_ref.sale_refund_reprocess.iter().enumerate() {
+            let res = refund_user_tokens(*key).await;
+            match res {
+                Ok(_val) => {
+                    CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+                        let mut canister_data_ref= canister_data.borrow().to_owned();
+                        // let mut col_data = canister_data_ref.collection_data;
+                        let _removed_val = canister_data_ref.sale_refund_reprocess.remove(index);
+                        *canister_data.borrow_mut() = canister_data_ref;
+                    });
+                },
+                Err(_error_str) => {
+                    continue;
+                }
             }
         }
     }
-    Ok("NFTs minted succesfully for all participants".to_string())
+
+    let user_balance = canister_data_ref.user_balance;
+    for (key, _value) in user_balance.iter() {
+        let res = refund_user_tokens(*key).await;
+        match res {
+            Ok(_val) => {continue;},
+            Err(_error_str) => {
+                CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+                    let mut canister_data_ref= canister_data.borrow().to_owned();
+                    // let mut col_data = canister_data_ref.collection_data;
+                    canister_data_ref.sale_refund_reprocess.push(*key);
+                    *canister_data.borrow_mut() = canister_data_ref;
+                });
+            }
+        }
+    }
+    Ok("Amount refunded succesfully for all participants".to_string())
 }
 
 #[query] 
@@ -913,7 +888,7 @@ async fn get_user_sale_balance(user_account: Principal) -> Result<(u64, u64), St
 fn get_sale_data(token_id : String) -> Result<SaleData, String> {
 
     CANISTER_DATA.with(|canister_data| {
-        
+
         let canister_data_ref= canister_data.borrow().to_owned();
         let sales_data_map = canister_data_ref.sales_data;
 
@@ -941,7 +916,31 @@ async fn create_accountid(caller_account: Principal) -> Result<AccountIdentifier
     Ok(account)
 }
 
-ic_cdk::export_candid!();
+//pre upgrade
+#[ic_cdk::pre_upgrade]
+fn pre_upgrade() {
+    CANISTER_DATA.with(|canister_data_ref_cell| {
+        let canister_data = canister_data_ref_cell.take();
+
+        storage::stable_save((canister_data,)).ok();
+    });
+}
+
+//post upgrade
+#[ic_cdk::post_upgrade]
+fn post_upgrade() {
+    match storage::stable_restore() {
+        Ok((canister_data,)) => {
+            CANISTER_DATA.with(|canister_data_ref_cell| {
+                *canister_data_ref_cell.borrow_mut() = canister_data;
+            });
+        }
+        Err(_) => {
+            panic!("Failed to restore canister data from stable memory");
+        }
+    }
+}
+
 
 fn allow_only_canister() -> Result<(), String> {
     let canister_id = ic_cdk::api::id();
@@ -951,3 +950,5 @@ fn allow_only_canister() -> Result<(), String> {
         Ok(())
     }
 }
+
+ic_cdk::export_candid!();
