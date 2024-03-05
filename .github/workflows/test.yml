@@ -36,6 +36,7 @@ jobs:
       - name: build and deploy Canister
         run: |
           cd provision_canister
+          dfx canister create provision_canister_backend
           dfx build provision_canister_backend
           dfx deploy provision_canister_backend
 
