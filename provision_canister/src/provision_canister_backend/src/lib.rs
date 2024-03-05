@@ -9,6 +9,7 @@ use ic_cdk::{caller, notify, query, storage, update};
 use serde::Serialize;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
+use std::vec;
 // use argon2::{Argon2, PasswordHash, PasswordVerifier, Variant, Version};
 
 use state::{AdditionalMetadata, ApprovedResponse, CanisterIds, FinancialDetails, FormMetadata, MarketDetails, Metadata, PropertyDetails, SaleData, SaleStatus, Status};
@@ -20,6 +21,9 @@ pub struct SetPermissions{
     pub commit: Vec<Principal>,
     pub manage_permissions: Vec<Principal>
 }
+
+#[derive(CandidType)]
+struct EmptyArgs {}
 
 type FormData = BTreeMap<u16, FormMetadata>;
 type CanisterStore = BTreeMap<Principal, CanisterIds>;
@@ -105,6 +109,9 @@ fn verify_key(
 fn init_minter_wasm( 
     wasm: Vec<u8>,
 ) -> Result<String, String> {
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
 
     CANISTER_DATA.with(|canister_data| {
         canister_data.borrow_mut().wasm_store.minter_wasm_blob = wasm;
@@ -127,6 +134,9 @@ fn get_minter_wasm(
 fn init_asset_wasm( 
     wasm: Vec<u8>,
 ) -> Result<String, String> {
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
 
     CANISTER_DATA.with(|canister_data| {
         canister_data.borrow_mut().wasm_store.asset_wasm_blob = wasm;
@@ -179,166 +189,6 @@ fn revoke_commit_permission(id: Principal, user_id: Principal) -> Result<String,
     }
 }
 
-
-// #[update]
-// async fn all_canister_create(name: String, desc: String) -> Result<CanisterIds, String> {
- 
-//     let user = caller();
-//     // if !is_controller(&user) {
-//     //     return Err("Unauthorised user".to_string());
-//     // } 
-
-//     let settings = CanisterSettings::default();
-//     let create_arg = CreateCanisterArgument{
-//         settings: Some(settings)
-//     };
-
-//     let wasms = WASM_STORE.with(|wasms| {
-//         wasms.borrow().to_owned()
-//     });
-
-//     let (canister_id_1,): (CanisterIdRecord,) = match call_with_payment(
-//         Principal::management_canister(), // Management canister address
-//         "create_canister", // Function name
-//         (create_arg,), // Argument tuple
-//         2_000_000_000_000, // Payment amount in cycles
-//     ).await {
-//         Ok(x) => x,
-//         Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
-//     };
-
-//     if canister_id_1.canister_id == Principal::anonymous() {
-//         return Err("error creating asset canister".to_string());
-//     } 
-
-//     let install_arg = Some(AssetCanisterArgs::InitArgs);
-//     // let arg_vec = install_arg.as_bytes()
-
-//     let serialized_bytes: Vec<u8> = match install_arg {
-//         // Some(install_args) => serde_json::to_string(&install_arg).unwrap().as_bytes().to_vec(),
-//         Some(install_args) =>candid::encode_args((install_args,)).expect("Failed to encode arguments"),
-
-//         None => vec![],
-//     };
-
-//     // let principal_id = new_canister_id.0.canister_id;
-//     let asset_canister_id = canister_id_1.canister_id;
-
-//     // pub const WASM: &[u8] =
-//     //     include_bytes!("../assetstorage.wasm.gz");
-    
-//     // let wasm_file = WASM.to_vec();
-
-//     let asset_wasm = wasms.asset_wasm_blob;
-
-//     // create installCodeArgument
-//     let install_config = InstallCodeArgument {
-//         mode: CanisterInstallMode::Install,
-//         wasm_module: asset_wasm,
-//         canister_id: asset_canister_id,
-//         arg: (serialized_bytes),
-//         // arg: {vec![]},
-
-//     };
-//     // Install the Wasm code into the new canister
-//     let install_result = install_code(install_config).await;
-
-//     match install_result {
-//         Ok(_) => {}
-//         Err(err) => {
-//             eprintln!("Error installing code: {:?}", err);
-//             return Err(err.1);
-//         }
-//     }
-
-//     // create minter canister 
-//     let settings = CanisterSettings::default();
-//     let create_arg = CreateCanisterArgument{
-//         settings: Some(settings)
-//     };
-
-//     let (canister_id_2,): (CanisterIdRecord,) = match call_with_payment(
-//         Principal::management_canister(), // Management canister address
-//         "create_canister", // Function name
-//         (create_arg,), // Argument tuple
-//         2_000_000_000_000, // Payment amount in cycles
-//     ).await {
-//         Ok(x) => x,
-//         Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
-//     };
-
-//     if canister_id_2.canister_id == Principal::anonymous() {
-//         return Err("error creating asset canister".to_string());
-//     } 
-
-//     // install minter canister
-//     let minter_canister = canister_id_2.canister_id;
-
-//     // pub const MINTERWASM: &[u8] =
-//     //     include_bytes!("../../../../estate_dao_nft/target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm.gz");
-//     //     // include_bytes!("../../../canister_dummy/target/wasm32-unknown-unknown/release/canister_dummy_backend.wasm");
-
-//     // let wasm_file = MINTERWASM.to_vec();
-
-//     let minter_wasm = wasms.minter_wasm_blob;
-
-//     // create installCodeArgument
-//     let install_config = InstallCodeArgument {
-//         mode: CanisterInstallMode::Install,
-//         wasm_module: minter_wasm,
-//         canister_id: minter_canister,
-//         arg: vec![],
-//     };
-
-//     // Install the Wasm code into the new canister
-//     let install_result = install_code(install_config).await;
-
-//     match install_result {
-//         Ok(_) => {}
-//         Err(err) => {
-//             eprintln!("Error installing code: {:?}", err);
-//             return Err(err.1);
-//         }
-//     }
-
-//     //remove
-//     let mut e:String = String::from("");
-
-//     let res =  call(minter_canister, "init_collection", (name, desc, user), ).await; 
-//         match res{
-//             Ok(r) => {
-//                 let (res,): (Result<String, String>,) = r;
-//             }, 
-//         Err(_) =>{e=String::from("error")}
-//     }
-
-//     if e == "error".to_string(){
-//         return Err("error initializing struct".to_string());
-//     }
-
-//     let canister_id_data = CanisterIds{
-//         asset_canister: asset_canister_id,
-//         minter_canister
-//     };
-
-//     CANISTER_STORE.with(|canister_store| {
-//         let mut canister_map =  canister_store.borrow_mut();
-//         canister_map.insert(minter_canister.clone(), canister_id_data.clone());
-//     });
-
-//     return Ok(canister_id_data) ;
-// }
-
-//test  
-#[update]
-async fn test_auth_user() -> Result<Vec<Principal>, String> {
-
-    let caller = caller();
-    let mut minter_canister_vec: Vec<Principal> = Vec::new();
-    minter_canister_vec.push(caller);
-
-    return Ok(minter_canister_vec);  
-}
 
 #[update]
 fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
@@ -435,22 +285,15 @@ async fn approve_collection(index: u16, approval: bool) -> Result<ApprovedRespon
             reserved_cycles_limit: None
         };
         let create_arg = CreateCanisterArgument{
-            settings: Some(settings)
+            settings: Some(settings),
         };
 
-        let (canister_id_1,): (CanisterIdRecord,) = match call_with_payment(
-            Principal::management_canister(), // Management canister address
-            "create_canister", // Function name
-            (create_arg,), // Argument tuple
-            2_000_000_000_000, // Payment amount in cycles
-        ).await {
-            Ok(x) => x,
-            Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
-        };
-
-        if canister_id_1.canister_id == Principal::anonymous() {
-            return Err("error creating asset canister".to_string());
-        } 
+        let (canister_id_1,): (CanisterIdRecord,) = 
+            create_canister(
+                create_arg.clone(),
+                200_000_000_000,
+            )
+            .await.expect("Failed to create canister");
 
         let install_arg = Some(AssetCanisterArgs::InitArgs);
         // let arg_vec = install_arg.as_bytes()
@@ -479,7 +322,6 @@ async fn approve_collection(index: u16, approval: bool) -> Result<ApprovedRespon
         // Install the Wasm code into the new canister
         let install_result = install_code(install_config).await;
 
-
         match install_result {
             Ok(_) => {}
             Err(err) => {
@@ -489,46 +331,34 @@ async fn approve_collection(index: u16, approval: bool) -> Result<ApprovedRespon
         }
 
         // create minter canister 
-        let settings = CanisterSettings {
-            controllers: Some(vec![ api::id()]),
-            compute_allocation: None,
-            memory_allocation: None,
-            freezing_threshold: None,
-            reserved_cycles_limit: None
-        };
-        let create_arg = CreateCanisterArgument{
-            settings: Some(settings)
-        };
-
-        let (canister_id_2,): (CanisterIdRecord,) = match call_with_payment(
-            Principal::management_canister(), // Management canister address
-            "create_canister", // Function name
-            (create_arg,), // Argument tuple
-            2_000_000_000_000, // Payment amount in cycles
-        ).await {
-            Ok(x) => x,
-            Err((_, _)) => (CanisterIdRecord { canister_id: Principal::anonymous() },),
-        };
-
-        if canister_id_2.canister_id == Principal::anonymous() {
-            return Err("error creating asset canister".to_string());
-        } 
+        let (canister_id_2,): (CanisterIdRecord,) = 
+        create_canister(
+            create_arg.clone(),
+            200_000_000_000,
+        )
+        .await.expect("Failed to create canister");
 
         // install minter canister
-        let minter_canister = canister_id_2.canister_id;
+        let minter_canister_id = canister_id_2.canister_id;
 
         let minter_wasm = wasms.minter_wasm_blob;
+        // let arg_vec: Vec<u8> = Vec::new();
+        let encoded_args = candid::encode_args(()).expect("Failed to encode arguments");
+        // let empty_args = EmptyArgs {};
+        // let encoded_args = candid::encode_args((empty_args,)).expect("Failed to encode arguments");
 
         // create installCodeArgument
-        let install_config = InstallCodeArgument {
+        let install_config_minter = InstallCodeArgument {
             mode: CanisterInstallMode::Install,
             wasm_module: minter_wasm,
-            canister_id: minter_canister,
-            arg: vec![],
+            canister_id: minter_canister_id,
+            arg: encoded_args,
+            // arg: {vec![]},
+            // arg: candid::encode_one(()).unwrap(),
         };
 
         // Install the Wasm code into the new canister
-        let install_result = install_code(install_config).await;
+        let install_result = install_code(install_config_minter).await;
 
         match install_result {
             Ok(_) => {}
@@ -538,20 +368,18 @@ async fn approve_collection(index: u16, approval: bool) -> Result<ApprovedRespon
             }
         }
 
-        //remove
-        let mut e:String = String::from("");
+        let form_install_args = candid::encode_args((form_data,)).expect("Failed to encode arguments");
 
-        let res =  call(minter_canister, "init_collection", (form_data,), ).await; 
-            match res{
-                Ok(r) => {
-                    let (res,): (Result<String, String>,) = r;
-                }, 
-            Err(_) =>{e=String::from("error")}
-        }
-
-        if e == "error".to_string(){
-            return Err("error initializing struct".to_string());
-        }
+        let res = call(minter_canister_id, "init_collection", (form_data,), ).await; 
+        
+        match res{
+            Ok(r) => {
+                let (res,): (Result<String, String>,) = r;
+            }, 
+            Err(_) =>{            
+                return Err("error initializing collection".to_string());
+            }
+        };
         
         CANISTER_DATA.with(|canister_data| {
             let mut canister_data_ref = canister_data.borrow_mut().to_owned();
@@ -560,10 +388,10 @@ async fn approve_collection(index: u16, approval: bool) -> Result<ApprovedRespon
 
             let canister_id_data = CanisterIds{
                 asset_canister: asset_canister_id,
-                minter_canister
+                minter_canister: minter_canister_id
             };
 
-            canister_data_ref.canister_store.insert(minter_canister.clone(), canister_id_data.clone());
+            canister_data_ref.canister_store.insert(minter_canister_id.clone(), canister_id_data.clone());
             *canister_data.borrow_mut() = canister_data_ref;
 
             Ok(ApprovedResponse::CanisterId(canister_id_data))
@@ -575,7 +403,7 @@ async fn approve_collection(index: u16, approval: bool) -> Result<ApprovedRespon
 
             let _form_entry = canister_data_ref.form_data.remove(&index);
             *canister_data.borrow_mut() = canister_data_ref;
-            Ok(ApprovedResponse::StrResp(("collection rejected".to_string())))
+            Ok(ApprovedResponse::StrResp("collection rejected".to_string()))
         })
     }
 }
@@ -659,6 +487,20 @@ async fn get_escrow_balance(minter: Principal, user_id: Principal) -> Result<u64
     }
 }
 
+#[update]
+async fn get_sale_balance(minter: Principal, user_id: Principal) -> Result<(u64, u64), String> {  
+
+    let res =  call(minter, "get_user_sale_balance", (user_id,), ).await; 
+    match res{
+        Ok(r) => {
+            let (res,): (Result<(u64, u64), String>,) = r;
+            res
+        }, 
+        Err(_) =>{
+            Err("error".to_string())
+        }
+    }
+}
 
 #[update]
 async fn sale_confirmed_mint(minter: Principal) -> Result<String, String> {  
@@ -721,9 +563,6 @@ async fn get_sale_data(minter: Principal, token_id: String) -> Result<SaleData, 
     }
 }
 
-// Enable Candid export
-ic_cdk::export_candid!();
-
 //pre upgrade
 #[ic_cdk::pre_upgrade]
 fn pre_upgrade() {
@@ -733,7 +572,6 @@ fn pre_upgrade() {
         storage::stable_save((canister_data,)).ok();
     });
 }
-
 
 //post upgrade
 #[ic_cdk::post_upgrade]
@@ -750,3 +588,6 @@ fn post_upgrade() {
         }
     }
 }
+
+// Enable Candid export
+ic_cdk::export_candid!();

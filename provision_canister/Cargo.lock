@@ -146,14 +146,14 @@ dependencies = [
 
 [[package]]
 name = "candid"
-version = "0.10.3"
+version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "182543fbc03b4ad0bfc384e6b68346e0b0aad0b11d075b71b4fcaa5d07f8862c"
+checksum = "7fcd70c7bed52cb20e38dd933c19c0c9abf0302b60db3fa3186e27ec53edf6ad"
 dependencies = [
  "anyhow",
  "binread",
  "byteorder",
- "candid_derive 0.6.5",
+ "candid_derive 0.6.6",
  "hex",
  "ic_principal",
  "leb128",
@@ -181,9 +181,9 @@ dependencies = [
 
 [[package]]
 name = "candid_derive"
-version = "0.6.5"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "970c220da8aa2fa6f7ef5dbbf3ea5b620a59eb3ac107cfb95ae8c6eebdfb7a08"
+checksum = "3de398570c386726e7a59d9887b68763c481477f9a043fb998a2e09d428df1a9"
 dependencies = [
  "lazy_static",
  "proc-macro2",
@@ -483,7 +483,7 @@ version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f3d204af0b11c45715169c997858edb58fa8407d08f4fae78a6b415dd39a362"
 dependencies = [
- "candid 0.10.3",
+ "candid 0.10.4",
  "ic-cdk-macros 0.8.4",
  "ic0 0.21.1",
  "serde",
@@ -510,7 +510,7 @@ version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a5a618e4020cea88e933d8d2f8c7f86d570ec06213506a80d4f2c520a9bba512"
 dependencies = [
- "candid 0.10.3",
+ "candid 0.10.4",
  "proc-macro2",
  "quote",
  "serde",
@@ -538,7 +538,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1fea91d351eca80ffa8427e77df3210e37d292c6c75afbe1ca5e6437418e022"
 dependencies = [
- "candid 0.10.3",
+ "candid 0.10.4",
  "crc32fast",
  "hex",
  "ic-cdk 0.12.1",
@@ -579,7 +579,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "804c892bf95652101660a25cea10f059f73eb8973f6b04e0349758fda1190447"
 dependencies = [
  "base32",
- "candid 0.10.3",
+ "candid 0.10.4",
  "crc32fast",
  "hex",
  "num-bigint",
@@ -910,7 +910,7 @@ dependencies = [
 name = "provision_canister_backend"
 version = "0.1.0"
 dependencies = [
- "candid 0.10.3",
+ "candid 0.10.4",
  "ic-cdk 0.12.1",
  "ic-cdk-timers",
  "ic-ledger-types",

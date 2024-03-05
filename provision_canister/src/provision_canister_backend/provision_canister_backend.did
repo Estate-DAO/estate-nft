@@ -83,8 +83,9 @@ type Result_3 = variant { Ok : vec nat8; Err : text };
 type Result_4 = variant { Ok : nat64; Err : text };
 type Result_5 = variant { Ok : FormMetadata; Err : text };
 type Result_6 = variant { Ok : Metadata; Err : text };
-type Result_7 = variant { Ok : SaleData; Err : text };
-type Result_8 = variant { Ok : text; Err : text };
+type Result_7 = variant { Ok : record { nat64; nat64 }; Err : text };
+type Result_8 = variant { Ok : SaleData; Err : text };
+type Result_9 = variant { Ok : text; Err : text };
 type ReturnsFinancials = record {
   average_5_year_roi : opt float32;
   yields : opt float32;
@@ -113,14 +114,15 @@ service : {
   get_form_metadata : (nat16) -> (Result_5);
   get_minter_wasm : () -> (Result_3) query;
   get_nft_metadata : (principal, text) -> (Result_6);
-  get_sale_data : (principal, text) -> (Result_7);
-  grant_commit_permission : (principal, principal) -> (Result_8);
-  init_asset_wasm : (vec nat8) -> (Result_8);
-  init_form_metadata : (FormMetadata) -> (Result_8);
-  init_minter_wasm : (vec nat8) -> (Result_8);
-  revoke_commit_permission : (principal, principal) -> (Result_8);
-  sale_confirmed_mint : (principal) -> (Result_8);
-  sale_confirmed_refund : (principal) -> (Result_8);
-  update_key : (text) -> (Result_8);
+  get_sale_balance : (principal, principal) -> (Result_7);
+  get_sale_data : (principal, text) -> (Result_8);
+  grant_commit_permission : (principal, principal) -> (Result_9);
+  init_asset_wasm : (vec nat8) -> (Result_9);
+  init_form_metadata : (FormMetadata) -> (Result_9);
+  init_minter_wasm : (vec nat8) -> (Result_9);
+  revoke_commit_permission : (principal, principal) -> (Result_9);
+  sale_confirmed_mint : (principal) -> (Result_9);
+  sale_confirmed_refund : (principal) -> (Result_9);
+  update_key : (text) -> (Result_9);
   verify_key : (text) -> (bool) query;
 }

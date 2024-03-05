@@ -65,40 +65,43 @@ fn init_collection(
         // let total_minted = COUNTER.with(|counter| *counter.borrow());
         let mut canister_data_ref = canister_data.borrow_mut();
 
+        
+        // if !is_controller(&caller()) {
+        //     return Err("UnAuthorised Access".to_string());
+        // }
+
         if canister_data_ref.collection_data.is_initialised == true {
-            Err("collection already initialised".to_string())
+            return Err("collection already initialised".to_string());
         }
 
-        else {
-            let mut add_metadata = form_data.additional_metadata;
-            if add_metadata.is_none() {
-                add_metadata = Some(AdditionalMetadata{
-                    property_details: None,
-                    financial_details: None,
-                    documents: Vec::new(),
-                    market_details: None                        
-                });
-            }
-             
-            canister_data_ref.collection_data = 
-                CollectionMetadata{
-                    name: form_data.name,
-                    desc: form_data.desc,
-                    // symbol: form_data.symbol,
-                    total_supply: 0,
-                    price: form_data.price,
-                    image_uri: form_data.image_uri,
-                    supply_cap: form_data.supply_cap,
-                    // image: Some("image".to_string()),
-                    property_images: form_data.property_images,
-                    additional_metadata: add_metadata,
-                    status: Status::Draft,
-                    owner: form_data.owner,
-                    is_initialised: true
-            };
-
-            Ok("collection created succesfully".to_string())
+        let mut add_metadata = form_data.additional_metadata;
+        if add_metadata.is_none() {
+            add_metadata = Some(AdditionalMetadata{
+                property_details: None,
+                financial_details: None,
+                documents: Vec::new(),
+                market_details: None                        
+            });
         }
+            
+        canister_data_ref.collection_data = 
+            CollectionMetadata{
+                name: form_data.name,
+                desc: form_data.desc,
+                // symbol: form_data.symbol,
+                total_supply: 0,
+                price: form_data.price,
+                image_uri: form_data.image_uri,
+                supply_cap: form_data.supply_cap,
+                // image: Some("image".to_string()),
+                property_images: form_data.property_images,
+                additional_metadata: add_metadata,
+                status: Status::Draft,
+                owner: form_data.owner,
+                is_initialised: true
+        };
+
+        Ok("collection created succesfully".to_string())
     })
 }
 
@@ -701,7 +704,7 @@ fn sale_confirmed_mint() -> Result<String, String> {
     Ok("NFTs minted succesfully for all participants".to_string())
 }
 
-#[query(composite = true)]
+#[query]
 async fn get_payment_details(caller_account: Principal) -> Result<(String, u64, u64), String> {
     let canister_id = ic_cdk::api::id();
     // let caller_account = caller();
@@ -729,7 +732,7 @@ async fn get_payment_details(caller_account: Principal) -> Result<(String, u64, 
     Ok((account_id.to_string(), nft_price, user_stored_balance))
 }
 
-#[query(composite = true)]
+#[query]
 async fn get_balance(user_account: Principal) -> Result<u64, String> {
     let canister_id = ic_cdk::api::id();
 
@@ -873,7 +876,7 @@ fn get_total_invested() -> u64 {
     total_invest
 }
 
-#[query(composite = true)]
+#[query]
 async fn get_user_sale_balance(user_account: Principal) -> Result<(u64, u64), String> {
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
@@ -898,7 +901,7 @@ fn get_sale_data(token_id : String) -> Result<SaleData, String> {
     })
 }
 
-#[query(composite = true)]
+#[query]
 async fn create_escrow_accountid(caller_account: Principal) -> Result<AccountIdentifier, String> {
     let canister_id = ic_cdk::api::id();
 
@@ -907,7 +910,7 @@ async fn create_escrow_accountid(caller_account: Principal) -> Result<AccountIde
     Ok(account)
 }
 
-#[query(composite = true)]
+#[query]
 async fn create_accountid(caller_account: Principal) -> Result<AccountIdentifier, String> {
     let canister_id = ic_cdk::api::id();
 

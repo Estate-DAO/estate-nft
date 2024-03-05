@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cd ./../estate_dao_nft
-dfx deploy estate_dao_nft_backend --network=local
+dfx deploy estate_dao_nft_backend --ic
 
 gzip -f -1 ./target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm
 
@@ -19,8 +19,8 @@ cd ../provision_canister
 
 printf "( blob \"%s\")" "$minter_wasm_char_escaped" > minter_wasm.blob
 
-dfx deploy provision_canister_backend
-dfx deploy internet_identity
+# dfx deploy provision_canister_backend
+# dfx deploy internet_identity
 
 # Specify the path to your Wasm.gz file
 asset_wasm="./src/provision_canister_backend/assetstorage.wasm.gz"
@@ -33,8 +33,13 @@ asset_wasm_char_escaped=$(printf "%s" "$asset_wasm_char" | sed 's/../\\&/g')
 
 printf "( blob \"%s\")" "$asset_wasm_char_escaped" > asset_wasm.blob
 
-dfx canister call provision_canister_backend init_minter_wasm --argument-file asset_wasm.blob --ic
-dfx canister call provision_canister_backend init_asset_wasm --argument-file minter_wasm.blob --ic
+dfx canister call provision_canister_backend init_minter_wasm --argument-file minter_wasm.blob --ic
+dfx canister call provision_canister_backend init_asset_wasm --argument-file asset_wasm.blob --ic
 
-rm minter_wasm.blob
-rm asset_wasm.blob
+# rm minter_wasm.blob
+# rm asset_wasm.blob
+
+# can_id=$(jq -r '.provision_canister_backend.local' ./.dfx/local/canister_ids.json)
+# dfx canister deposit-cycles 6000000000000 $can_id --ic
+
+dfx canister call provision_canister_backend update_key "admin"
