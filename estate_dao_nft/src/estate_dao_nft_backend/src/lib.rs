@@ -514,8 +514,8 @@ fn update_NNS_account(
     user_nns_account: Principal,
 ) -> Result<String, String> {
 
-    // let caller = get_caller().expect("Anonymus principal not allowed to make calls");
-    let caller = caller();
+    let caller = get_caller().expect("Anonymus principal not allowed to make calls");
+    // let caller = caller();
 
     // let user_pay_account = 
     CANISTER_DATA.with(|canister_data| {   
@@ -533,6 +533,30 @@ fn update_NNS_account(
         }
     })
 }
+
+
+#[query] 
+fn get_NNS_account( 
+) -> Result<Principal, String> {
+
+    // let caller = get_caller().expect("Anonymus principal not allowed to make calls");
+    let caller = caller();
+
+    // let user_pay_account = 
+    let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().to_owned() });
+
+    let user_payment_account = canister_data_ref.user_pay_account.get(&caller);       
+    match user_payment_account {
+        Some(nns_account) => {
+            Ok(*nns_account)
+        },
+        None => {
+            Err("account not added".to_string())
+        }
+    }
+}
+
 
 #[update]
 async fn primary_sale() -> Result<String, String> {
