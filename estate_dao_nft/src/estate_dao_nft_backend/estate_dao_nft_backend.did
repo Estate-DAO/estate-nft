@@ -125,7 +125,7 @@ service : {
   get_financial_details : () -> (Result_5) query;
   get_market_details : () -> (Result_6) query;
   get_metadata : (text) -> (Result_7) query;
-  get_payment_details : (principal) -> (Result_8) query;
+  get_payment_details : () -> (Result_8) query;
   get_property_details : () -> (Result_9) query;
   get_sale_data : (text) -> (Result_10) query;
   get_total_invested : () -> (nat64) query;
@@ -137,11 +137,11 @@ service : {
   icrc7_total_supply : () -> (nat64) query;
   init_collection : (FormMetadata) -> (Result);
   mint : (text, text, text, principal) -> (Result);
-  mint_approved_nfts : (principal) -> (Result);
-  primary_sale : (principal) -> (Result);
+  primary_sale : () -> (Result);
   refund_user_tokens : (principal) -> (Result);
   sale_confirmed_mint : () -> (Result);
   sale_confirmed_refund : () -> (Result);
+  update_NNS_account : (principal) -> (Result);
   update_basic_details : (opt text, opt text, opt Status) -> (Result);
   update_doc_details : (vec vec record { text; text }) -> (Result);
   update_financial_details : (FinancialDetails) -> (Result);

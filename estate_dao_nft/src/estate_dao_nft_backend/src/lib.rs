@@ -1,5 +1,6 @@
 mod state;
 
+use candid::types::principal;
 use candid::{types::number::Nat, CandidType, Deserialize, Principal};
 use ic_cdk::api::{is_controller, time};
 use ic_cdk::storage;
@@ -36,6 +37,7 @@ type TokenOwnerMap = BTreeMap<String, Account>;
 type UserTokensList = BTreeMap<Account, Vec<String>>;
 type SaleList = BTreeMap<String, SaleData>;
 type UserBalance = BTreeMap<Principal, (u64, u64)>;
+type UserPayAccount = BTreeMap<Principal, Principal>;
 
 #[derive(Clone, Debug, CandidType, Default, Deserialize, Serialize)]
 pub struct CanisterData { 
@@ -45,6 +47,7 @@ pub struct CanisterData {
     pub sales_data: SaleList,
     pub total_invested: u64,
     pub user_balance: UserBalance,
+    pub user_pay_account: UserPayAccount,
     pub sale_refund_reprocess: Vec<Principal>,
     pub sale_mint_reprocess: Vec<Principal>,
 }
@@ -52,7 +55,6 @@ pub struct CanisterData {
 thread_local! {
     static CANISTER_DATA: RefCell<CanisterData> = RefCell::default()
 }
-
 
 //collection specific data
 #[update]
@@ -65,7 +67,6 @@ fn init_collection(
         // let total_minted = COUNTER.with(|counter| *counter.borrow());
         let mut canister_data_ref = canister_data.borrow_mut();
 
-        
         // if !is_controller(&caller()) {
         //     return Err("UnAuthorised Access".to_string());
         // }
@@ -105,7 +106,7 @@ fn init_collection(
     })
 }
 
-#[update] 
+#[update]
 fn update_basic_details( 
     name: Option<String>,
     desc: Option<String>,
@@ -508,14 +509,43 @@ fn collection_image() -> Vec<String>{
     col_data.property_images
 }
 
+#[update] 
+fn update_NNS_account( 
+    user_nns_account: Principal,
+) -> Result<String, String> {
+
+    // let caller = get_caller().expect("Anonymus principal not allowed to make calls");
+    let caller = caller();
+
+    // let user_pay_account = 
+    CANISTER_DATA.with(|canister_data| {   
+        let mut canister_data_ref =  canister_data.borrow().to_owned();
+
+        let user_payment_account = canister_data_ref.user_pay_account.get(&caller);       
+        match user_payment_account {
+            Some(_val) => {
+                Err("account already added".to_string())
+            },
+            None => {
+                canister_data_ref.user_pay_account.insert(caller, user_nns_account);
+                Ok("account added successfully".to_string())
+            }
+        }
+    })
+}
+
 #[update]
-async fn primary_sale(user: Principal) -> Result<String, String> {
-    // let buyer_id = caller();
+async fn primary_sale() -> Result<String, String> {
+    let caller = caller();
     let canister_id = ic_cdk::api::id();
 
-    let collection_data = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().collection_data.to_owned() });
+    let canister_data_refe = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().to_owned() });
 
+    let collection_data = canister_data_refe.collection_data.to_owned();
+
+    let user = canister_data_refe.user_pay_account.get(&caller).ok_or("nns account not added for user")?;
+    
     let ledger_canister_id = Principal::from_text(LEDGER_CANISTER_ID).unwrap();
 
     // new token_id
@@ -523,7 +553,7 @@ async fn primary_sale(user: Principal) -> Result<String, String> {
 
     let nft_price = collection_data.price;
 
-    let account = AccountIdentifier::new(&canister_id, &Subaccount::from(user));
+    let account = AccountIdentifier::new(&canister_id, &Subaccount::from(*user));
 
     let balance_args = ic_ledger_types::AccountBalanceArgs { account };
     let balance = ic_ledger_types::account_balance(ledger_canister_id, balance_args)
@@ -554,7 +584,7 @@ async fn primary_sale(user: Principal) -> Result<String, String> {
 
                 CANISTER_DATA.with(|canister_data| {
                     let mut canister_data_ref= canister_data.borrow().to_owned();
-                    canister_data_ref.user_balance.insert(user, (current_balance, *used_bal));
+                    canister_data_ref.user_balance.insert(*user, (current_balance, *used_bal));
                     
                     canister_data_ref.total_invested = canister_data_ref.total_invested.saturating_add(current_balance.saturating_sub(*stored_bal));
                     
@@ -570,17 +600,17 @@ async fn primary_sale(user: Principal) -> Result<String, String> {
             if current_balance >= nft_price {
                 CANISTER_DATA.with(|canister_data| {
                     let mut canister_data_ref= canister_data.borrow_mut();
-                    canister_data_ref.user_balance.insert(user, (current_balance, 0));
+                    canister_data_ref.user_balance.insert(*user, (current_balance, 0));
                 });
                 return Ok("balance updated for new user".to_string());
-            }
+            } 
             return  Err("no transfered or amount less than NFT price".to_string());
         },
     }
 }
 
-//mint for user , to be minted using the approved-mint counter
-#[update]
+//mint for user, to be minted using the approved-mint counter
+//#[update]
 fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
     let canister_id = ic_cdk::api::id();
     // let mut counter: u16 = Default::default();    
@@ -705,24 +735,25 @@ fn sale_confirmed_mint() -> Result<String, String> {
 }
 
 #[query]
-async fn get_payment_details(caller_account: Principal) -> Result<(String, u64, u64), String> {
+async fn get_payment_details() -> Result<(String, u64, u64), String> {
     let canister_id = ic_cdk::api::id();
-    // let caller_account = caller();
-    
-    // account-id
-    let account_id = AccountIdentifier::new(&canister_id, &Subaccount::from(caller_account));
+    // let caller = get_caller().expect("Anonymus principal not allowed to make calls");
+    let caller = caller();
 
     // nft price
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
 
     let nft_price = canister_data_ref.collection_data.price;
+    let user = canister_data_ref.user_pay_account.get(&caller).ok_or("nns account not added for user")?;
+    
+    // account-id
+    let account_id = AccountIdentifier::new(&canister_id, &Subaccount::from(*user));
 
     //user's invested amount
-    let user_data = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().user_balance.to_owned() });
+    let user_data= canister_data_ref.user_balance;
 
-    let user_balance = user_data.get(&caller_account);
+    let user_balance = user_data.get(&user);
     let user_stored_balance = match  user_balance{
         Some((stored_bal, _used_bal)) => {
             *stored_bal
@@ -952,6 +983,19 @@ fn allow_only_canister() -> Result<(), String> {
     } else {
         Ok(())
     }
+}
+
+// to add while deploying
+fn get_caller() -> Result<Principal, String> {  
+
+    let caller = caller();  
+    // The anonymous principal is not allowed to interact with canister.  
+    if caller == Principal::anonymous() {  
+        Err(String::from("Anonymous principal not allowed to make calls."))  
+    } else {  
+        Ok(caller)  
+    } 
+
 }
 
 ic_cdk::export_candid!();
