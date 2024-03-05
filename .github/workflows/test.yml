@@ -32,3 +32,15 @@ jobs:
 
       # - name: Run test
       #   run: test
+
+      - name: build and deploy Canister
+        run: |
+          cd provision_canister
+          dfx build provision_canister_backend
+          dfx deploy provision_canister_backend
+
+      - name: call upload script
+        run: |
+          cd ../scripts/
+          ./canister_deploy_local.sh
+              
