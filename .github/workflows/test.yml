@@ -43,6 +43,6 @@ jobs:
 
       - name: call upload script
         run: |
-          cd ../scripts/
-          ./canister_deploy_local.sh
+          cd scripts/
+          ./canisters_deploy_local.sh
               
