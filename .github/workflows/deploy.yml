@@ -32,8 +32,6 @@ jobs:
           touch actions_identity.pem
           echo "${{ secrets.ESTATE_DAO_CANISTER_CONTROLLER }}" > actions_identity.pem
           dfx identity import --storage-mode plaintext actions actions_identity.pem
-          wc -l actions_identity.pem
-          cat actions_identity.pem
           rm actions_identity.pem
           dfx identity use actions
 
@@ -42,8 +40,8 @@ jobs:
         run: |
           cd provision_canister
           rustup target add wasm32-unknown-unknown
-          dfx canister create provision_canister_backend
-          dfx build provision_canister_backend
+          dfx canister create provision_canister_backend --ic
+          dfx build provision_canister_backend --ic
           dfx deploy provision_canister_backend --ic
               
       - name: Run deploy script
