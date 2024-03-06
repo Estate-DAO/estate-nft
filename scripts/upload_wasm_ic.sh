@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cd ./../estate_dao_nft
-dfx deploy estate_dao_nft_backend --ic
+dfx deploy estate_dao_nft_backend 
 
 gzip -f -1 ./target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm
 
@@ -42,4 +42,4 @@ dfx canister call provision_canister_backend init_asset_wasm --argument-file ass
 # can_id=$(jq -r '.provision_canister_backend.local' ./.dfx/local/canister_ids.json)
 # dfx canister deposit-cycles 6000000000000 $can_id --ic
 
-dfx canister call provision_canister_backend update_key "admin"
+# dfx canister call provision_canister_backend update_key "admin"

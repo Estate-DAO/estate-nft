@@ -528,19 +528,19 @@ fn update_NNS_account(
             },
             None => {
                 canister_data_ref.user_pay_account.insert(caller, user_nns_account);
+                *canister_data.borrow_mut() = canister_data_ref;
                 Ok("account added successfully".to_string())
             }
         }
     })
 }
 
-
 #[query] 
 fn get_NNS_account( 
 ) -> Result<Principal, String> {
 
-    // let caller = get_caller().expect("Anonymus principal not allowed to make calls");
-    let caller = caller();
+    let caller = get_caller().expect("Anonymus principal not allowed to make calls");
+    // let caller = caller();
 
     // let user_pay_account = 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
@@ -675,7 +675,7 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
         let collection_data_ref = CANISTER_DATA.with(|canister_data| { 
             canister_data.borrow().collection_data.to_owned()});
 
-        if collection_data_ref.total_supply.saturating_add(1) >= collection_data_ref.supply_cap {
+        if collection_data_ref.total_supply >= collection_data_ref.supply_cap {
             return Err("supply cap limit reached".to_string());
         }    
 
