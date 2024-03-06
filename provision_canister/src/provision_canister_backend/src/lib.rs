@@ -36,7 +36,8 @@ pub struct CanisterData {
     pub form_counter: u16,
     pub wasm_store: WasmStore,
     pub canister_store: CanisterStore,
-    pub stored_key: String
+    pub stored_key: String,
+    pub known_principals: Vec<Principal>,
 }
 
 thread_local! {
@@ -71,6 +72,45 @@ enum ProvisionError {
     InvalidData(String),
 }
 
+#[update] 
+fn add_known_principals( 
+    new_admin: Principal,
+) -> Result<String, String> {
+
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
+
+    let principal_list = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().known_principals.to_owned() });
+
+    if principal_list.contains(&new_admin) {
+        return Err("admin already added".to_string());
+    } 
+
+    CANISTER_DATA.with(|canister_data| {   
+        let mut canister_data_ref =  canister_data.borrow().to_owned();
+
+        canister_data_ref.known_principals.push(new_admin);
+        *canister_data.borrow_mut() = canister_data_ref;
+
+        Ok("new admin added succesfully".to_string())
+    })
+}
+
+#[query] 
+fn verify_admin( 
+    caller: Principal,
+) -> bool {
+
+    let principal_list = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().known_principals.to_owned() });
+
+    if principal_list.contains(&caller) {
+        return true;
+    } 
+    false
+}
 
 #[update] 
 fn update_key( 
@@ -263,10 +303,11 @@ async fn filter_status(stat: Status) -> Result<Vec<Principal>, String> {
 #[update]
 async fn approve_collection(index: u16, approval: bool) -> Result<ApprovedResponse, String> {
 
-    let user = caller();
-    // if !is_controller(&user) {
-    //     return Err("Unauthorised user".to_string());
-    // } 
+    let caller = caller();
+    if !verify_admin(caller) {
+        return Err("unauthorised user".to_string());
+    }
+    
     let canister_data_ref = CANISTER_DATA.with(|canister_data|{canister_data.borrow().to_owned()});
     let form_list = canister_data_ref.form_data;
 
@@ -412,6 +453,11 @@ async fn approve_collection(index: u16, approval: bool) -> Result<ApprovedRespon
 fn init_form_metadata( 
     form_input: FormMetadata
 ) -> Result<String, String> {
+    //admin verification not requiered, anyone can fill form
+    // let caller = caller();
+    // if !verify_admin(caller) {
+    //     return Err("unauthorised user".to_string());
+    // }
 
     CANISTER_DATA.with(|canister_data| {
         let mut canister_data_ref = canister_data.borrow_mut().to_owned();
@@ -505,9 +551,9 @@ async fn get_sale_balance(minter: Principal, user_id: Principal) -> Result<(u64,
 #[update]
 async fn sale_confirmed_mint(minter: Principal) -> Result<String, String> {  
 
-    // if !is_controller(&caller()) {
-    //     return Err("UnAuthorised Access".into());
-    // }
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
 
     let res =  call(minter, "sale_confirmed_mint", (), ).await; 
     match res{
@@ -524,9 +570,9 @@ async fn sale_confirmed_mint(minter: Principal) -> Result<String, String> {
 #[update]
 async fn sale_accept(minter: Principal) -> Result<String, String> {  
 
-    // if !is_controller(&caller()) {
-    //     return Err("UnAuthorised Access".into());
-    // }
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
 
     let res =  call(minter, "sale_accepted", (), ).await; 
     match res{
@@ -544,9 +590,9 @@ async fn sale_accept(minter: Principal) -> Result<String, String> {
 #[update]
 async fn sale_confirmed_refund(minter: Principal) -> Result<String, String> { 
 
-    // if !is_controller(&caller()) {
-    //     return Err("UnAuthorised Access".into());
-    // } 
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    } 
 
     let res =  call(minter, "sale_rejected", (), ).await; 
     match res{
@@ -563,9 +609,9 @@ async fn sale_confirmed_refund(minter: Principal) -> Result<String, String> {
 #[update]
 async fn sale_confirmed_accept_payment(minter: Principal) -> Result<String, String> { 
 
-    // if !is_controller(&caller()) {
-    //     return Err("UnAuthorised Access".into());
-    // } 
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    } 
 
     let res =  call(minter, "sale_confirmed_transfer", (), ).await; 
     match res{

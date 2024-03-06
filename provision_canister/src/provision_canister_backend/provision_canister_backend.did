@@ -109,11 +109,9 @@ service : {
   filter_status : (Status) -> (Result_1);
   get_all_canisters : () -> (Result_2) query;
   get_all_minter_canisters : () -> (Result_1);
-  get_asset_wasm : () -> (Result_3) query;
   get_escrow_balance : (principal, principal) -> (Result_4);
   get_form_list : () -> (vec record { nat16; FormMetadata });
   get_form_metadata : (nat16) -> (Result_5);
-  get_minter_wasm : () -> (Result_3) query;
   get_nft_metadata : (principal, text) -> (Result_6);
   get_sale_balance : (principal, principal) -> (Result_7);
   get_sale_data : (principal, text) -> (Result_8);
