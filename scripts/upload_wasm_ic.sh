@@ -39,7 +39,4 @@ dfx canister call provision_canister_backend init_asset_wasm --argument-file ass
 # rm minter_wasm.blob
 # rm asset_wasm.blob
 
-# can_id=$(jq -r '.provision_canister_backend.local' ./.dfx/local/canister_ids.json)
-# dfx canister deposit-cycles 6000000000000 $can_id --ic
-
-# dfx canister call provision_canister_backend update_key "admin"
+dfx canister call provision_canister_backend update_key "admin"
