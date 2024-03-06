@@ -40,6 +40,7 @@ pub struct CollectionMetadata {
     pub additional_metadata: Option<AdditionalMetadata>,
     pub status: Status,
     pub owner: String,
+    pub treasury_account: String,
     pub is_initialised: bool,
 }
 //Additional metadata
@@ -130,6 +131,7 @@ pub struct FormMetadata {
     pub property_images: Vec<String>,
     pub additional_metadata: Option<AdditionalMetadata>,
     pub owner: String,
+    pub treasury: String,
 }
  
 // NFT specific data

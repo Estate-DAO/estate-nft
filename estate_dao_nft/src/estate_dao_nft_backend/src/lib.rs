@@ -99,6 +99,7 @@ fn init_collection(
                 additional_metadata: add_metadata,
                 status: Status::Draft,
                 owner: form_data.owner,
+                treasury_account: form_data.treasury,
                 is_initialised: true
         };
 
@@ -876,7 +877,7 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
 }
 
 #[update] 
-async fn sale_confirmed_refund() -> Result<String, String> {
+async fn sale_rejected() -> Result<String, String> {
 
     if !is_controller(&caller()) {
         return Err("UnAuthorised Access".into());
@@ -920,6 +921,130 @@ async fn sale_confirmed_refund() -> Result<String, String> {
         }
     }
     Ok("Amount refunded succesfully for all participants".to_string())
+}
+
+
+//sale accepted, transfer funds to treasury
+#[update] 
+async fn sale_confirmed_transfer() -> Result<String, String> {
+
+    let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().to_owned() });
+
+    if !canister_data_ref.sale_refund_reprocess.is_empty(){
+        for (index, key) in canister_data_ref.sale_refund_reprocess.iter().enumerate() {
+            let res = transfer_user_tokens(*key).await;
+            match res {
+                Ok(_val) => {
+                    CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+                        let mut canister_data_ref= canister_data.borrow().to_owned();
+                        // let mut col_data = canister_data_ref.collection_data;
+                        let _removed_val = canister_data_ref.sale_refund_reprocess.remove(index);
+                        *canister_data.borrow_mut() = canister_data_ref;
+                    });
+                },
+                Err(_error_str) => {
+                    continue;
+                }
+            }
+        }
+    }
+
+    let user_balance = canister_data_ref.user_balance;
+    for (key, _value) in user_balance.iter() {
+        let res = transfer_user_tokens(*key).await;
+        match res {
+            Ok(_val) => {continue;},
+            Err(_error_str) => {
+                CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+                    let mut canister_data_ref= canister_data.borrow().to_owned();
+                    // let mut col_data = canister_data_ref.collection_data;
+                    canister_data_ref.sale_refund_reprocess.push(*key);
+                    *canister_data.borrow_mut() = canister_data_ref;
+                });
+            }
+        }
+    }
+    Ok("Amount refunded succesfully for all participants".to_string())
+}
+
+
+async fn transfer_user_tokens(user : Principal) -> Result<String, String> {
+    let canister_id = ic_cdk::api::id();
+
+    let ledger_canister_id = Principal::from_text(LEDGER_CANISTER_ID).unwrap();
+    let escrow_account = AccountIdentifier::new(&canister_id, &Subaccount::from(user));
+
+    let balance_args = ic_ledger_types::AccountBalanceArgs {account: escrow_account };
+    // return Ok(balance_args)
+    let balance = ic_ledger_types::account_balance(ledger_canister_id, balance_args)
+        .await
+        .map_err(|e| e.1);
+
+    let token_balance: Tokens;
+    match balance{
+        Ok(tokens) => {
+            token_balance = tokens;
+        },
+        Err(e) => {
+            return Err("unable to fetch balance".to_string());
+        },
+    }
+    let escrow_token_balance = token_balance.e8s();
+    if escrow_token_balance == 0 || escrow_token_balance < ICP_FEE{ 
+        return Ok("no balance for user in escrow".to_string());
+    }
+
+    let treasury_id = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().collection_data.treasury_account.to_owned() });
+
+    let treasury_principal = Principal::from_text(treasury_id).expect("invalid treasury principal");
+
+    let treasury_account = AccountIdentifier::new(&treasury_principal, &DEFAULT_SUBACCOUNT);
+    
+    //fetch user store balance
+    let user_data = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().user_balance.to_owned() });
+
+    let user_token_balance = user_data.get(&user).ok_or("user had no balance")?;
+    let user_stored_balance = user_token_balance.0;
+    let user_used_balance = user_token_balance.1;
+
+    let transfer_args = TransferArgs {
+        memo: ic_ledger_types::Memo(0),
+        amount: Tokens::from_e8s(user_stored_balance.saturating_sub(ICP_FEE)),
+        fee: Tokens::from_e8s(ICP_FEE),
+        from_subaccount: Some(Subaccount::from(user)),
+        to: treasury_account,
+        created_at_time: None,
+    };
+    
+    //transfer function of ic_ledger_types
+    let _res = ic_ledger_types::transfer(ledger_canister_id, transfer_args)
+        .await
+        .expect("call to ledger failed")
+        .expect("transfer failed");
+
+
+    CANISTER_DATA.with(|canister_data| {
+        let mut canister_data_ref= canister_data.borrow().to_owned();
+        canister_data_ref.user_balance.insert(user, (0, user_used_balance));
+
+        *canister_data.borrow_mut() = canister_data_ref;
+    });
+
+    Ok("success".to_string())
+
+}
+
+#[update] 
+async fn sale_accepted() -> Result<String,String>{
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
+    sale_confirmed_mint().expect_err("failed minting");
+    sale_confirmed_transfer().await.expect_err("failed transfer");
+    Ok("Sale accpted, NFTs minted, and amount transferred to treasury".to_string())
 }
 
 #[query] 

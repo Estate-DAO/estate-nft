@@ -24,12 +24,14 @@ pub enum Status{
 pub struct FormMetadata {
     pub name: String,
     pub desc: String,
+    // pub symbol: String,
     pub supply_cap: u64,
     pub price: u64,
     pub image_uri: String,
     pub property_images: Vec<String>,
     pub additional_metadata: Option<AdditionalMetadata>,
-    pub owner: String
+    pub owner: String,
+    pub treasury: String,
 }
  
 //Additional metadata
