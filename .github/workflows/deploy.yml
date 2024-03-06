@@ -35,6 +35,14 @@ jobs:
           rm actions_identity.pem
           dfx identity use actions
 
+      - name: build and deploy Canister
+        run: |
+          cd provision_canister
+          rustup target add wasm32-unknown-unknown
+          dfx canister create provision_canister_backend
+          dfx build provision_canister_backend
+          dfx deploy provision_canister_backend --ic
+              
       - name: Run deploy script
         working-directory: ./scripts
         run: ./scripts/upload_wasm_ic.sh
