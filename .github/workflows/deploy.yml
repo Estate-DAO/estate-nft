@@ -40,9 +40,7 @@ jobs:
         run: |
           cd provision_canister
           rustup target add wasm32-unknown-unknown
-          dfx canister create provision_canister_backend --ic
-          dfx build provision_canister_backend --ic
-          dfx deploy provision_canister_backend --ic
+          dfx deploy provision_canister_backend --network ic
               
       - name: Run deploy script
         working-directory: ./scripts
