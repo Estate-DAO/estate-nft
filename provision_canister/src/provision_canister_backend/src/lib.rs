@@ -159,17 +159,6 @@ fn init_minter_wasm(
     Ok("minter set succesfully".to_string())
 }
 
-#[query] 
-fn get_minter_wasm( 
-) -> Result<Vec<u8>, String> {
-
-    CANISTER_DATA.with(|canister_data| {
-        let canister_data_ref = canister_data.borrow().to_owned();
-        let wasm = canister_data_ref.wasm_store.minter_wasm_blob;
-        Ok(wasm)
-    })
-}
-
 #[update] 
 fn init_asset_wasm( 
     wasm: Vec<u8>,
@@ -182,17 +171,6 @@ fn init_asset_wasm(
         canister_data.borrow_mut().wasm_store.asset_wasm_blob = wasm;
     });
     Ok("asset wasm set succesfully".to_string())
-}
-
-#[query] 
-fn get_asset_wasm( 
-) -> Result<Vec<u8>, String> {
-
-    CANISTER_DATA.with(|canister_data| {
-        let canister_data_ref =  canister_data.borrow().to_owned();
-        let wasm = canister_data_ref.wasm_store.asset_wasm_blob;
-        Ok(wasm)
-    })
 }
 
 //collection specific data
@@ -548,24 +526,24 @@ async fn get_sale_balance(minter: Principal, user_id: Principal) -> Result<(u64,
     }
 }
 
-#[update]
-async fn sale_confirmed_mint(minter: Principal) -> Result<String, String> {  
+// #[update]
+// async fn sale_confirmed_mint(minter: Principal) -> Result<String, String> {  
 
-    if !is_controller(&caller()) {
-        return Err("UnAuthorised Access".into());
-    }
+//     if !is_controller(&caller()) {
+//         return Err("UnAuthorised Access".into());
+//     }
 
-    let res =  call(minter, "sale_confirmed_mint", (), ).await; 
-    match res{
-        Ok(r) => {
-            let (res,): (Result<String, String>,) = r;
-            res
-        }, 
-        Err(_) =>{
-            Err("error".to_string())
-        }
-    }
-}
+//     let res =  call(minter, "sale_confirmed_mint", (), ).await; 
+//     match res{
+//         Ok(r) => {
+//             let (res,): (Result<String, String>,) = r;
+//             res
+//         }, 
+//         Err(_) =>{
+//             Err("error".to_string())
+//         }
+//     }
+// }
 
 #[update]
 async fn sale_accept(minter: Principal) -> Result<String, String> {  
@@ -606,24 +584,24 @@ async fn sale_confirmed_refund(minter: Principal) -> Result<String, String> {
     }
 }
 
-#[update]
-async fn sale_confirmed_accept_payment(minter: Principal) -> Result<String, String> { 
+// #[update]
+// async fn sale_confirmed_accept_payment(minter: Principal) -> Result<String, String> { 
 
-    if !is_controller(&caller()) {
-        return Err("UnAuthorised Access".into());
-    } 
+//     if !is_controller(&caller()) {
+//         return Err("UnAuthorised Access".into());
+//     } 
 
-    let res =  call(minter, "sale_confirmed_transfer", (), ).await; 
-    match res{
-        Ok(r) => {
-            let (res,): (Result<String, String>,) = r;
-            res
-        }, 
-        Err(_) =>{
-            Err("error".to_string())
-        }
-    }
-}
+//     let res =  call(minter, "sale_confirmed_transfer", (), ).await; 
+//     match res{
+//         Ok(r) => {
+//             let (res,): (Result<String, String>,) = r;
+//             res
+//         }, 
+//         Err(_) =>{
+//             Err("error".to_string())
+//         }
+//     }
+// }
 
 #[update]
 async fn get_nft_metadata(minter: Principal, token_id: String) -> Result<Metadata, String> {  
@@ -647,6 +625,61 @@ async fn get_sale_data(minter: Principal, token_id: String) -> Result<SaleData, 
     match res{
         Ok(r) => {
             let (res,): (Result<SaleData, String>,) = r;
+            res
+        }, 
+        Err(_) =>{
+            Err("error".to_string())
+        }
+    }
+}
+
+#[update]
+async fn get_total_invested(minter: Principal) -> Result<Vec<Principal>, String> {  
+
+    let res =  call(minter, "get_total_invested", (), ).await; 
+    match res{
+        Ok(r) => {
+            let (res,): (Result<Vec<Principal>, String>,) = r;
+            res
+        }, 
+        Err(_) =>{
+            Err("error".to_string())
+        }
+    }
+}
+
+//for reprocessing failed accept payment and mint
+#[update]
+async fn reprocess_sale_accept(minter: Principal) -> Result<String, String> {  
+
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
+
+    let res =  call(minter, "reprocess_accept_transfer", (), ).await; 
+    match res{
+        Ok(r) => {
+            let (res,): (Result<String, String>,) = r;
+            res
+        }, 
+        Err(_) =>{
+            Err("error".to_string())
+        }
+    }
+}
+
+//for reprocessing failed accept payment and mint
+#[update]
+async fn reprocess_sale_refund(minter: Principal) -> Result<String, String> {  
+
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
+
+    let res =  call(minter, "reprocess_refund", (), ).await; 
+    match res{
+        Ok(r) => {
+            let (res,): (Result<String, String>,) = r;
             res
         }, 
         Err(_) =>{

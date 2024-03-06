@@ -386,7 +386,7 @@ fn get_property_details() -> Result<PropertyDetails, String> {
 }
 
 // TODO update total_minted in collectionMetadata
-// #[update(guard = "allow_only_canister")] 
+#[update(guard = "allow_only_canister")] 
 fn mint(token_id: String, symbol: String, uri: String, owner: Principal) -> Result<String, String> {
 
     CANISTER_DATA.with(|canister_data| {
@@ -626,8 +626,10 @@ async fn primary_sale() -> Result<String, String> {
         None => {
             if current_balance >= nft_price {
                 CANISTER_DATA.with(|canister_data| {
-                    let mut canister_data_ref= canister_data.borrow_mut();
+                    let mut canister_data_ref= canister_data.borrow().to_owned();
                     canister_data_ref.user_balance.insert(*user, (current_balance, 0));
+                    canister_data_ref.total_invested = canister_data_ref.total_invested.saturating_add(current_balance);
+                    *canister_data.borrow_mut() = canister_data_ref;
                 });
                 return Ok("balance updated for new user".to_string());
             } 
@@ -637,7 +639,7 @@ async fn primary_sale() -> Result<String, String> {
 }
 
 //mint for user, to be minted using the approved-mint counter
-//#[update]
+#[update(guard = "allow_only_canister")] 
 fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
     let canister_id = ic_cdk::api::id();
     // let mut counter: u16 = Default::default();    
@@ -714,7 +716,7 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
     Ok("success".to_string())
 }
 
-#[update]
+#[update(guard = "allow_only_canister")] 
 fn sale_confirmed_mint() -> Result<String, String> {
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
@@ -791,7 +793,7 @@ async fn get_balance(user_account: Principal) -> Result<u64, String> {
     Ok(token_balance.e8s())
 }
 
-#[update] 
+#[update(guard = "allow_only_canister")] 
 async fn refund_user_tokens(user : Principal) -> Result<String, String> {
     let canister_id = ic_cdk::api::id();
 
@@ -850,8 +852,26 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
             return  Err("user had no balance".to_string());
         },
     }
-    Ok("success".to_string())
+    Ok("amount refunded to user".to_string())
 
+}
+
+//sale accepted, transfer funds to treasury
+#[update]
+async fn refund_for_user_by_controller(user : Principal) -> Result<String, String> {
+
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
+
+    match refund_user_tokens(user).await {
+        Ok(res) => {
+            Ok(res)
+        },
+        Err(error_str) => {
+            Err(error_str)
+        }
+    }
 }
 
 #[update] 
@@ -884,7 +904,7 @@ async fn sale_rejected() -> Result<String, String> {
 
 
 //sale accepted, transfer funds to treasury
-#[update]
+#[update(guard = "allow_only_canister")] 
 async fn sale_confirmed_transfer() -> Result<String, String> {
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
@@ -908,7 +928,7 @@ async fn sale_confirmed_transfer() -> Result<String, String> {
     Ok("Amount transferred succesfully to treasury for all participants".to_string())
 }
 
-#[update]
+#[update(guard = "allow_only_canister")] 
 async fn transfer_user_tokens(user : Principal) -> Result<String, String> {
     let canister_id = ic_cdk::api::id();
 
@@ -1022,7 +1042,10 @@ async fn sale_accepted() -> Result<String,String>{
 
 // call failed mints and transfer for reprocessing
 #[update]
-async fn reprocess_mint_transfer() -> Result<String, String> {
+async fn reprocess_accept_transfer() -> Result<String, String> {
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
@@ -1071,6 +1094,9 @@ async fn reprocess_mint_transfer() -> Result<String, String> {
 // call failed mints and transfer for reprocessing
 #[update]
 async fn reprocess_refund() -> Result<String, String> {
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
@@ -1098,7 +1124,7 @@ async fn reprocess_refund() -> Result<String, String> {
 }
 
 
-#[query] 
+#[update] 
 fn get_reprocess_mint() -> Vec<Principal> {
 
     let reprocess_mint = CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| { 
@@ -1107,7 +1133,7 @@ fn get_reprocess_mint() -> Vec<Principal> {
     reprocess_mint
 }
 
-#[query] 
+#[update] 
 fn get_reprocess_transfer() -> Vec<Principal> {
 
     let reprocess_transfer = CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| { 
@@ -1116,7 +1142,7 @@ fn get_reprocess_transfer() -> Vec<Principal> {
     reprocess_transfer
 }
 
-#[query] 
+#[update] 
 fn get_reprocess_refund() -> Vec<Principal> {
 
     let reprocess_refund = CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| { 
@@ -1135,7 +1161,7 @@ fn get_total_invested() -> u64 {
     total_invest
 }
 
-#[query]
+#[update]
 async fn get_user_sale_balance(user_account: Principal) -> Result<(u64, u64), String> {
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
