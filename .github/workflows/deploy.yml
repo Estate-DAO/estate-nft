@@ -32,10 +32,11 @@ jobs:
           touch actions_identity.pem
           echo "${{ secrets.ESTATE_DAO_CANISTER_CONTROLLER_PRIVATE_KEY }}" > actions_identity.pem
           dfx identity import --storage-mode plaintext actions actions_identity.pem
-          rm actions_identity.pem
-          dfx identity use actions
           wc -l actions_identity.pem
           cat actions_identity.pem
+          rm actions_identity.pem
+          dfx identity use actions
+
 
       - name: build and deploy Canister
         run: |
