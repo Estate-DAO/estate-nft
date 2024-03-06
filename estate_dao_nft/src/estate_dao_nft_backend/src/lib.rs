@@ -444,7 +444,7 @@ fn mint(token_id: String, symbol: String, uri: String, owner: Principal) -> Resu
 
 // Metadata items TBD
 // for now using NFTMetadata + Collection Metadata 
-#[query] 
+#[update] 
 fn get_metadata(token_id : String) -> Result<Metadata, String> {
 
     CANISTER_DATA.with(|canister_data| {
@@ -515,8 +515,8 @@ fn update_NNS_account(
     user_nns_account: Principal,
 ) -> Result<String, String> {
 
-    let caller = get_caller().expect("Anonymus principal not allowed to make calls");
-    // let caller = caller();
+    // let caller = get_caller().expect("Anonymus principal not allowed to make calls");
+    let caller = caller();
 
     // let user_pay_account = 
     CANISTER_DATA.with(|canister_data| {   
@@ -715,31 +715,27 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
 #[update]
 fn sale_confirmed_mint() -> Result<String, String> {
 
-    // if !is_controller(&caller()) {
-    //     return Err("UnAuthorised Access".into());
-    // }
-
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
 
-    if !canister_data_ref.sale_mint_reprocess.is_empty(){
-        for (index, key) in canister_data_ref.sale_mint_reprocess.iter().enumerate() {
-            let res = mint_approved_nfts(*key);
-            match res {
-                Ok(_val) => {
-                    CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
-                        let mut canister_data_ref= canister_data.borrow().to_owned();
-                        // let mut col_data = canister_data_ref.collection_data;
-                        let _removed_val = canister_data_ref.sale_mint_reprocess.remove(index);
-                        *canister_data.borrow_mut() = canister_data_ref;
-                    });
-                },
-                Err(_error_str) => { 
-                    continue;
-                }
-            }
-        }
-    }
+    // if !canister_data_ref.sale_mint_reprocess.is_empty(){
+    //     for (index, key) in canister_data_ref.sale_mint_reprocess.iter().enumerate() {
+    //         let res = mint_approved_nfts(*key);
+    //         match res {
+    //             Ok(_val) => {
+    //                 CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+    //                     let mut canister_data_ref= canister_data.borrow().to_owned();
+    //                     // let mut col_data = canister_data_ref.collection_data;
+    //                     let _removed_val = canister_data_ref.sale_mint_reprocess.remove(index);
+    //                     *canister_data.borrow_mut() = canister_data_ref;
+    //                 });
+    //             },
+    //             Err(_error_str) => { 
+    //                 continue;
+    //             }
+    //         }
+    //     }
+    // }
 
     let user_balance = canister_data_ref.user_balance;
     for (key, _value) in user_balance.iter() {
@@ -747,12 +743,12 @@ fn sale_confirmed_mint() -> Result<String, String> {
         match res {
             Ok(_val) => {continue;},
             Err(_error_str) => { 
-                CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
-                    let mut canister_data_ref= canister_data.borrow().to_owned();
-                    // let mut col_data = canister_data_ref.collection_data;
-                    canister_data_ref.sale_mint_reprocess.push(*key);
-                    *canister_data.borrow_mut() = canister_data_ref;
-                });
+                // CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+                //     let mut canister_data_ref= canister_data.borrow().to_owned();
+                //     // let mut col_data = canister_data_ref.collection_data;
+                //     canister_data_ref.sale_mint_reprocess.push(*key);
+                //     *canister_data.borrow_mut() = canister_data_ref;
+                // });
             }
         }
     }
@@ -788,7 +784,7 @@ async fn get_payment_details() -> Result<(String, u64, u64), String> {
     Ok((account_id.to_string(), nft_price, user_stored_balance))
 }
 
-#[query]
+#[update]
 async fn get_balance(user_account: Principal) -> Result<u64, String> {
     let canister_id = ic_cdk::api::id();
 
@@ -1029,8 +1025,22 @@ async fn sale_accepted() -> Result<String,String>{
     if !is_controller(&caller()) {
         return Err("UnAuthorised Access".into());
     }
-    sale_confirmed_mint().expect_err("failed minting");
-    sale_confirmed_transfer().await.expect_err("failed transfer");
+    match sale_confirmed_mint() {
+        Ok(str) => {
+            ic_cdk::println!("mint result {:?}", str);
+        },
+        Err(e) => {
+            return Err(e);
+        }
+    }
+    match sale_confirmed_transfer().await {
+        Ok(str) => {
+            ic_cdk::println!("mint result {:?}", str);
+        },
+        Err(e) => {
+            return Err(e);
+        }
+    }
     Ok("Sale accpted, NFTs minted, and amount transferred to treasury".to_string())
 }
 

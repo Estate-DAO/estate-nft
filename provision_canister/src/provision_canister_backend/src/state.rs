@@ -127,12 +127,11 @@ pub struct CanisterIds{
 // NFTMetadata + CollectionMetadata
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct Metadata {
-    pub nft_symbol: String,
     pub nft_token_id: String,
+    pub symbol: String,
     pub nft_uri: String, //image   
     pub collection_name: String,
     pub desc: String,
-    // pub royalty: RoyaltyData,
     pub total_supply: u64,
     pub supply_cap: u64,
 }

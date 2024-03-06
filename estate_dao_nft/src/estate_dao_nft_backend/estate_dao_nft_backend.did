@@ -123,12 +123,12 @@ service : {
   create_accountid : (principal) -> (Result_1) query;
   create_escrow_accountid : (principal) -> (Result_1) query;
   get_NNS_account : () -> (Result_2) query;
-  get_balance : (principal) -> (Result_3) query;
+  get_balance : (principal) -> (Result_3);
   get_collection_metadata : () -> (Result_4) query;
   get_collection_status : () -> (Result_5) query;
   get_financial_details : () -> (Result_6) query;
   get_market_details : () -> (Result_7) query;
-  get_metadata : (text) -> (Result_8) query;
+  get_metadata : (text) -> (Result_8);
   get_payment_details : () -> (Result_9) query;
   get_property_details : () -> (Result_10) query;
   get_sale_data : (text) -> (Result_11) query;

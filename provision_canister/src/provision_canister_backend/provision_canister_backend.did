@@ -53,7 +53,7 @@ type Metadata = record {
   collection_name : text;
   nft_uri : text;
   total_supply : nat64;
-  nft_symbol : text;
+  symbol : text;
 };
 type PropertyDetails = record {
   year_built : opt nat32;
