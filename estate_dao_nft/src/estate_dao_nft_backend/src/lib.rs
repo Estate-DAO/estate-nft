@@ -50,6 +50,8 @@ pub struct CanisterData {
     pub user_pay_account: UserPayAccount,
     pub sale_refund_reprocess: Vec<Principal>,
     pub sale_mint_reprocess: Vec<Principal>,
+    pub sale_transfer_reprocess: Vec<Principal>,
+
 }
 
 thread_local! {
@@ -718,37 +720,17 @@ fn sale_confirmed_mint() -> Result<String, String> {
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
 
-    // if !canister_data_ref.sale_mint_reprocess.is_empty(){
-    //     for (index, key) in canister_data_ref.sale_mint_reprocess.iter().enumerate() {
-    //         let res = mint_approved_nfts(*key);
-    //         match res {
-    //             Ok(_val) => {
-    //                 CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
-    //                     let mut canister_data_ref= canister_data.borrow().to_owned();
-    //                     // let mut col_data = canister_data_ref.collection_data;
-    //                     let _removed_val = canister_data_ref.sale_mint_reprocess.remove(index);
-    //                     *canister_data.borrow_mut() = canister_data_ref;
-    //                 });
-    //             },
-    //             Err(_error_str) => { 
-    //                 continue;
-    //             }
-    //         }
-    //     }
-    // }
-
     let user_balance = canister_data_ref.user_balance;
     for (key, _value) in user_balance.iter() {
         let res = mint_approved_nfts(*key);
         match res {
             Ok(_val) => {continue;},
             Err(_error_str) => { 
-                // CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
-                //     let mut canister_data_ref= canister_data.borrow().to_owned();
-                //     // let mut col_data = canister_data_ref.collection_data;
-                //     canister_data_ref.sale_mint_reprocess.push(*key);
-                //     *canister_data.borrow_mut() = canister_data_ref;
-                // });
+                CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+                    let mut canister_data_ref= canister_data.borrow().to_owned();
+                    canister_data_ref.sale_mint_reprocess.push(*key);
+                    *canister_data.borrow_mut() = canister_data_ref;
+                });
             }
         }
     }
@@ -882,25 +864,6 @@ async fn sale_rejected() -> Result<String, String> {
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
 
-    if !canister_data_ref.sale_refund_reprocess.is_empty(){
-        for (index, key) in canister_data_ref.sale_refund_reprocess.iter().enumerate() {
-            let res = refund_user_tokens(*key).await;
-            match res {
-                Ok(_val) => {
-                    CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
-                        let mut canister_data_ref= canister_data.borrow().to_owned();
-                        // let mut col_data = canister_data_ref.collection_data;
-                        let _removed_val = canister_data_ref.sale_refund_reprocess.remove(index);
-                        *canister_data.borrow_mut() = canister_data_ref;
-                    });
-                },
-                Err(_error_str) => {
-                    continue;
-                }
-            }
-        }
-    }
-
     let user_balance = canister_data_ref.user_balance;
     for (key, _value) in user_balance.iter() {
         let res = refund_user_tokens(*key).await;
@@ -936,7 +899,7 @@ async fn sale_confirmed_transfer() -> Result<String, String> {
                 CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
                     let mut canister_data_ref= canister_data.borrow().to_owned();
                     // let mut col_data = canister_data_ref.collection_data;
-                    canister_data_ref.sale_refund_reprocess.push(*key);
+                    canister_data_ref.sale_transfer_reprocess.push(*key);
                     *canister_data.borrow_mut() = canister_data_ref;
                 });
             }
@@ -1025,9 +988,12 @@ async fn sale_accepted() -> Result<String,String>{
     if !is_controller(&caller()) {
         return Err("UnAuthorised Access".into());
     }
-    
-    let collection_data = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().collection_data.to_owned() });
+
+    let primarys_sale_check = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().collection_data.primary_sale_happened.to_owned() });
+    if primarys_sale_check {
+        return Err("primary sale already happened".to_string());
+    }
     
     match sale_confirmed_mint() {
         Ok(str) => {
@@ -1045,8 +1011,120 @@ async fn sale_accepted() -> Result<String,String>{
             return Err(e);
         }
     }
-    Ok("Sale accpted, NFTs minted, and amount transferred to treasury".to_string())
+    CANISTER_DATA.with(|canister_data| { 
+
+        let mut canister_data_ref = canister_data.borrow_mut();
+        canister_data_ref.collection_data.primary_sale_happened = true;
+    
+        Ok("Sale accpted, NFTs minted, and amount transferred to treasury".to_string())
+    })
 }
+
+// call failed mints and transfer for reprocessing
+#[update]
+async fn reprocess_mint_transfer() -> Result<String, String> {
+
+    let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().to_owned() });
+
+    if !canister_data_ref.sale_mint_reprocess.is_empty(){
+        for (index, key) in canister_data_ref.sale_mint_reprocess.iter().enumerate() {
+            let res = mint_approved_nfts(*key);
+            match res {
+                Ok(_val) => {
+                    CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+                        let mut canister_data_ref= canister_data.borrow().to_owned();
+                        // let mut col_data = canister_data_ref.collection_data;
+                        let _removed_val = canister_data_ref.sale_mint_reprocess.remove(index);
+                        *canister_data.borrow_mut() = canister_data_ref;
+                    });
+                },
+                Err(_error_str) => { 
+                    continue;
+                }
+            }
+        }
+    }
+
+    if !canister_data_ref.sale_transfer_reprocess.is_empty(){
+        for (index, key) in canister_data_ref.sale_transfer_reprocess.iter().enumerate() {
+            let res = transfer_user_tokens(*key).await;
+            match res {
+                Ok(_val) => {
+                    CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+                        let mut canister_data_ref= canister_data.borrow().to_owned();
+                        // let mut col_data = canister_data_ref.collection_data;
+                        let _removed_val = canister_data_ref.sale_transfer_reprocess.remove(index);
+                        *canister_data.borrow_mut() = canister_data_ref;
+                    });
+                },
+                Err(_error_str) => { 
+                    continue;
+                }
+            }
+        }
+    }
+
+    Ok("NFTs minted succesfully for all participants".to_string())
+}
+
+// call failed mints and transfer for reprocessing
+#[update]
+async fn reprocess_refund() -> Result<String, String> {
+
+    let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().to_owned() });
+
+    if !canister_data_ref.sale_refund_reprocess.is_empty(){
+        for (index, key) in canister_data_ref.sale_refund_reprocess.iter().enumerate() {
+            let res = refund_user_tokens(*key).await;
+            match res {
+                Ok(_val) => {
+                    CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+                        let mut canister_data_ref= canister_data.borrow().to_owned();
+                        // let mut col_data = canister_data_ref.collection_data;
+                        let _removed_val = canister_data_ref.sale_refund_reprocess.remove(index);
+                        *canister_data.borrow_mut() = canister_data_ref;
+                    });
+                },
+                Err(_error_str) => { 
+                    continue;
+                }
+            }
+        }
+    }
+
+    Ok("NFTs minted succesfully for all participants".to_string())
+}
+
+
+#[query] 
+fn get_reprocess_mint() -> Vec<Principal> {
+
+    let reprocess_mint = CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| { 
+        canister_data.borrow().sale_mint_reprocess.to_owned() });
+
+    reprocess_mint
+}
+
+#[query] 
+fn get_reprocess_transfer() -> Vec<Principal> {
+
+    let reprocess_transfer = CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| { 
+        canister_data.borrow().sale_transfer_reprocess.to_owned() });
+
+    reprocess_transfer
+}
+
+#[query] 
+fn get_reprocess_refund() -> Vec<Principal> {
+
+    let reprocess_refund = CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| { 
+        canister_data.borrow().sale_refund_reprocess.to_owned() });
+
+    reprocess_refund
+}
+
 
 #[query] 
 fn get_total_invested() -> u64 {
