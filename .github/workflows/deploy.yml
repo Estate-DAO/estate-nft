@@ -32,6 +32,7 @@ jobs:
           touch actions_identity.pem
           echo "${{ secrets.ESTATE_DAO_CANISTER_CONTROLLER_PRIVATE_KEY }}" > actions_identity.pem
           dfx identity import --storage-mode plaintext actions actions_identity.pem
+          wc actions_identity.pem
           rm actions_identity.pem
           dfx identity use actions
 
