@@ -39,4 +39,4 @@ dfx canister call provision_canister_backend init_asset_wasm --argument-file ass
 # rm minter_wasm.blob
 # rm asset_wasm.blob
 
-dfx canister call provision_canister_backend update_key "admin"
+dfx canister call provision_canister_backend update_key "admin" --ic
