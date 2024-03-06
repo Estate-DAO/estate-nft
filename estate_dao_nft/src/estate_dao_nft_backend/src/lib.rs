@@ -100,7 +100,8 @@ fn init_collection(
                 status: Status::Draft,
                 owner: form_data.owner,
                 treasury_account: form_data.treasury,
-                is_initialised: true
+                is_initialised: true,
+                primary_sale_happened: false
         };
 
         Ok("collection created succesfully".to_string())
@@ -617,7 +618,6 @@ async fn primary_sale() -> Result<String, String> {
                 });
 
                 return Ok("balance_updated".to_string());
-
             }
             return  Err("no new transfer".to_string());
         }   
@@ -1025,6 +1025,10 @@ async fn sale_accepted() -> Result<String,String>{
     if !is_controller(&caller()) {
         return Err("UnAuthorised Access".into());
     }
+    
+    let collection_data = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().collection_data.to_owned() });
+    
     match sale_confirmed_mint() {
         Ok(str) => {
             ic_cdk::println!("mint result {:?}", str);

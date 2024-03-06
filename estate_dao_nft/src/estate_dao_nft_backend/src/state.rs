@@ -42,6 +42,7 @@ pub struct CollectionMetadata {
     pub owner: String,
     pub treasury_account: String,
     pub is_initialised: bool,
+    pub primary_sale_happened: bool,
 }
 //Additional metadata
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]

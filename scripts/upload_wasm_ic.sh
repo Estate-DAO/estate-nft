@@ -2,7 +2,9 @@
 set -euo pipefail
 
 cd ./../estate_dao_nft
-dfx deploy estate_dao_nft_backend --ic
+dfx canister create provision_canister_backend
+dfx build provision_canister_backend 
+dfx deploy estate_dao_nft_backend 
 
 gzip -f -1 ./target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm
 
