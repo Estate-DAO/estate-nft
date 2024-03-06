@@ -28,6 +28,7 @@ type FormMetadata = record {
   name : text;
   property_images : vec text;
   price : nat64;
+  treasury : text;
 };
 type InvestmentFinancials = record {
   initial_maintenance_reserve : opt float32;
@@ -121,7 +122,7 @@ service : {
   init_form_metadata : (FormMetadata) -> (Result_9);
   init_minter_wasm : (vec nat8) -> (Result_9);
   revoke_commit_permission : (principal, principal) -> (Result_9);
-  sale_confirmed_mint : (principal) -> (Result_9);
+  sale_accept : (principal) -> (Result_9);
   sale_confirmed_refund : (principal) -> (Result_9);
   update_key : (text) -> (Result_9);
   verify_key : (text) -> (bool) query;

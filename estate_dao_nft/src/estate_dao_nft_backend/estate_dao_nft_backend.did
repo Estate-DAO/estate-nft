@@ -14,6 +14,7 @@ type CollectionMetadata = record {
   additional_metadata : opt AdditionalMetadata;
   name : text;
   property_images : vec text;
+  treasury_account : text;
   price : nat64;
   is_initialised : bool;
   total_supply : nat64;
@@ -36,6 +37,7 @@ type FormMetadata = record {
   name : text;
   property_images : vec text;
   price : nat64;
+  treasury : text;
 };
 type InvestmentFinancials = record {
   initial_maintenance_reserve : opt float32;
@@ -138,11 +140,10 @@ service : {
   icrc7_owner_of : (text) -> (Result_13);
   icrc7_total_supply : () -> (nat64) query;
   init_collection : (FormMetadata) -> (Result);
-  mint : (text, text, text, principal) -> (Result);
   primary_sale : () -> (Result);
   refund_user_tokens : (principal) -> (Result);
-  sale_confirmed_mint : () -> (Result);
-  sale_confirmed_refund : () -> (Result);
+  sale_accepted : () -> (Result);
+  sale_rejected : () -> (Result);
   update_NNS_account : (principal) -> (Result);
   update_basic_details : (opt text, opt text, opt Status) -> (Result);
   update_doc_details : (vec vec record { text; text }) -> (Result);

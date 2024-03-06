@@ -383,7 +383,7 @@ fn get_property_details() -> Result<PropertyDetails, String> {
 }
 
 // TODO update total_minted in collectionMetadata
-#[update(guard = "allow_only_canister")] 
+// #[update(guard = "allow_only_canister")] 
 fn mint(token_id: String, symbol: String, uri: String, owner: Principal) -> Result<String, String> {
 
     CANISTER_DATA.with(|canister_data| {
@@ -712,12 +712,11 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
     Ok("success".to_string())
 }
 
-#[update] 
 fn sale_confirmed_mint() -> Result<String, String> {
 
-    if !is_controller(&caller()) {
-        return Err("UnAuthorised Access".into());
-    }
+    // if !is_controller(&caller()) {
+    //     return Err("UnAuthorised Access".into());
+    // }
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
@@ -925,7 +924,6 @@ async fn sale_rejected() -> Result<String, String> {
 
 
 //sale accepted, transfer funds to treasury
-#[update] 
 async fn sale_confirmed_transfer() -> Result<String, String> {
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
