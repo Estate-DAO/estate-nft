@@ -30,7 +30,7 @@ jobs:
       - name: Setup env to deploy
         run: |
           touch actions_identity.pem
-          echo "${{ secrets.ESTATE_DAO_CANISTER_CONTROLLER_PRIVATE_KEY }}" > actions_identity.pem
+          echo "${{ secrets.ESTATE_DAO_CANISTER_CONTROLLER }}" > actions_identity.pem
           dfx identity import --storage-mode plaintext actions actions_identity.pem
           wc -l actions_identity.pem
           cat actions_identity.pem
