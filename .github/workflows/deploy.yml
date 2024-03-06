@@ -44,4 +44,4 @@ jobs:
               
       - name: Run deploy script
         working-directory: ./scripts
-        run: ./scripts/upload_wasm_ic.sh
+        run: ./upload_wasm_ic.sh
