@@ -143,7 +143,10 @@ service : {
   primary_sale : () -> (Result);
   refund_user_tokens : (principal) -> (Result);
   sale_accepted : () -> (Result);
+  sale_confirmed_mint : () -> (Result);
+  sale_confirmed_transfer : () -> (Result);
   sale_rejected : () -> (Result);
+  transfer_user_tokens : (principal) -> (Result);
   update_NNS_account : (principal) -> (Result);
   update_basic_details : (opt text, opt text, opt Status) -> (Result);
   update_doc_details : (vec vec record { text; text }) -> (Result);

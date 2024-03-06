@@ -712,6 +712,7 @@ fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
     Ok("success".to_string())
 }
 
+#[update]
 fn sale_confirmed_mint() -> Result<String, String> {
 
     // if !is_controller(&caller()) {
@@ -924,29 +925,11 @@ async fn sale_rejected() -> Result<String, String> {
 
 
 //sale accepted, transfer funds to treasury
+#[update]
 async fn sale_confirmed_transfer() -> Result<String, String> {
 
     let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().to_owned() });
-
-    if !canister_data_ref.sale_refund_reprocess.is_empty(){
-        for (index, key) in canister_data_ref.sale_refund_reprocess.iter().enumerate() {
-            let res = transfer_user_tokens(*key).await;
-            match res {
-                Ok(_val) => {
-                    CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
-                        let mut canister_data_ref= canister_data.borrow().to_owned();
-                        // let mut col_data = canister_data_ref.collection_data;
-                        let _removed_val = canister_data_ref.sale_refund_reprocess.remove(index);
-                        *canister_data.borrow_mut() = canister_data_ref;
-                    });
-                },
-                Err(_error_str) => {
-                    continue;
-                }
-            }
-        }
-    }
 
     let user_balance = canister_data_ref.user_balance;
     for (key, _value) in user_balance.iter() {
@@ -963,10 +946,10 @@ async fn sale_confirmed_transfer() -> Result<String, String> {
             }
         }
     }
-    Ok("Amount refunded succesfully for all participants".to_string())
+    Ok("Amount transferred succesfully to treasury for all participants".to_string())
 }
 
-
+#[update]
 async fn transfer_user_tokens(user : Principal) -> Result<String, String> {
     let canister_id = ic_cdk::api::id();
 
@@ -993,9 +976,12 @@ async fn transfer_user_tokens(user : Principal) -> Result<String, String> {
         return Ok("no balance for user in escrow".to_string());
     }
 
-    let treasury_id = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().collection_data.treasury_account.to_owned() });
+    let collection_data = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().collection_data.to_owned() });
 
+    let treasury_id = collection_data.treasury_account;
+    let nft_price = collection_data.price;
+    
     let treasury_principal = Principal::from_text(treasury_id).expect("invalid treasury principal");
 
     let treasury_account = AccountIdentifier::new(&treasury_principal, &DEFAULT_SUBACCOUNT);
@@ -1008,15 +994,18 @@ async fn transfer_user_tokens(user : Principal) -> Result<String, String> {
     let user_stored_balance = user_token_balance.0;
     let user_used_balance = user_token_balance.1;
 
+    let excess_user_balance = user_stored_balance % nft_price;
+    let transfer_balance = user_stored_balance.saturating_sub(excess_user_balance);
+
     let transfer_args = TransferArgs {
         memo: ic_ledger_types::Memo(0),
-        amount: Tokens::from_e8s(user_stored_balance.saturating_sub(ICP_FEE)),
+        amount: Tokens::from_e8s(transfer_balance.saturating_sub(ICP_FEE)),
         fee: Tokens::from_e8s(ICP_FEE),
         from_subaccount: Some(Subaccount::from(user)),
         to: treasury_account,
         created_at_time: None,
     };
-    
+
     //transfer function of ic_ledger_types
     let _res = ic_ledger_types::transfer(ledger_canister_id, transfer_args)
         .await
@@ -1026,7 +1015,7 @@ async fn transfer_user_tokens(user : Principal) -> Result<String, String> {
 
     CANISTER_DATA.with(|canister_data| {
         let mut canister_data_ref= canister_data.borrow().to_owned();
-        canister_data_ref.user_balance.insert(user, (0, user_used_balance));
+        canister_data_ref.user_balance.insert(user, (excess_user_balance, user_used_balance));
 
         *canister_data.borrow_mut() = canister_data_ref;
     });
@@ -1121,7 +1110,6 @@ fn post_upgrade() {
         }
     }
 }
-
 
 fn allow_only_canister() -> Result<(), String> {
     let canister_id = ic_cdk::api::id();

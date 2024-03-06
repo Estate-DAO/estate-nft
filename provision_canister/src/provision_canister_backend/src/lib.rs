@@ -502,11 +502,12 @@ async fn get_sale_balance(minter: Principal, user_id: Principal) -> Result<(u64,
     }
 }
 
+#[update]
 async fn sale_confirmed_mint(minter: Principal) -> Result<String, String> {  
 
-    if !is_controller(&caller()) {
-        return Err("UnAuthorised Access".into());
-    }
+    // if !is_controller(&caller()) {
+    //     return Err("UnAuthorised Access".into());
+    // }
 
     let res =  call(minter, "sale_confirmed_mint", (), ).await; 
     match res{
@@ -523,9 +524,9 @@ async fn sale_confirmed_mint(minter: Principal) -> Result<String, String> {
 #[update]
 async fn sale_accept(minter: Principal) -> Result<String, String> {  
 
-    if !is_controller(&caller()) {
-        return Err("UnAuthorised Access".into());
-    }
+    // if !is_controller(&caller()) {
+    //     return Err("UnAuthorised Access".into());
+    // }
 
     let res =  call(minter, "sale_accepted", (), ).await; 
     match res{
@@ -543,11 +544,30 @@ async fn sale_accept(minter: Principal) -> Result<String, String> {
 #[update]
 async fn sale_confirmed_refund(minter: Principal) -> Result<String, String> { 
 
-    if !is_controller(&caller()) {
-        return Err("UnAuthorised Access".into());
-    } 
+    // if !is_controller(&caller()) {
+    //     return Err("UnAuthorised Access".into());
+    // } 
 
-    let res =  call(minter, "sale_confirmed_refund", (), ).await; 
+    let res =  call(minter, "sale_rejected", (), ).await; 
+    match res{
+        Ok(r) => {
+            let (res,): (Result<String, String>,) = r;
+            res
+        }, 
+        Err(_) =>{
+            Err("error".to_string())
+        }
+    }
+}
+
+#[update]
+async fn sale_confirmed_accept_payment(minter: Principal) -> Result<String, String> { 
+
+    // if !is_controller(&caller()) {
+    //     return Err("UnAuthorised Access".into());
+    // } 
+
+    let res =  call(minter, "sale_confirmed_transfer", (), ).await; 
     match res{
         Ok(r) => {
             let (res,): (Result<String, String>,) = r;
