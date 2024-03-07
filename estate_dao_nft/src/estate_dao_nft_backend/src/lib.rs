@@ -64,14 +64,15 @@ fn init_collection(
     form_data: FormMetadata
 ) -> Result<String, String> {
 
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".to_string());
+    }
+
     CANISTER_DATA.with(|canister_data| {
 
         // let total_minted = COUNTER.with(|counter| *counter.borrow());
         let mut canister_data_ref = canister_data.borrow_mut();
 
-        // if !is_controller(&caller()) {
-        //     return Err("UnAuthorised Access".to_string());
-        // }
 
         if canister_data_ref.collection_data.is_initialised == true {
             return Err("collection already initialised".to_string());
@@ -385,7 +386,8 @@ fn get_property_details() -> Result<PropertyDetails, String> {
     Ok(collection_data.additional_metadata.ok_or("collection not initialized")?.property_details.ok_or("collection not initialized")?)
 }
 
-// TODO update total_minted in collectionMetadata
+
+// mint new NFTs
 #[update(guard = "allow_only_canister")] 
 fn mint(token_id: String, symbol: String, uri: String, owner: Principal) -> Result<String, String> {
 
