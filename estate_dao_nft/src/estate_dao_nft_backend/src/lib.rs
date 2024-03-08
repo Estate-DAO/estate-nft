@@ -100,7 +100,7 @@ fn init_collection(
                 // image: Some("image".to_string()),
                 property_images: form_data.property_images,
                 additional_metadata: add_metadata,
-                status: Status::Draft,
+                status: Status::Live,
                 owner: form_data.owner,
                 treasury_account: form_data.treasury,
                 is_initialised: true,
@@ -111,55 +111,83 @@ fn init_collection(
     })
 }
 
+// tbd
+
+// #[update]
+// fn update_basic_details( 
+//     name: Option<String>,
+//     desc: Option<String>,
+//     stat: Option<Status>
+// ) -> Result<String, String> {
+
+//     CANISTER_DATA.with(|canister_data| {
+        
+//         let mut canister_data_ref= canister_data.borrow_mut().to_owned();
+//         let mut col_data = canister_data_ref.collection_data;
+
+//         let user_res = Principal::from_text(col_data.owner.clone());
+//         let user: Principal;
+//         match user_res{
+//             Ok(id) => {user=id;},
+//             Err(e) => return Err("collection owner not initialized".to_string())
+//         };
+//         if caller() != user {
+//             Err("unathorized user".to_string())
+//         }
+//         else {
+//             match name{
+//                 Some(new_name) => {
+//                     col_data.name = new_name;
+//                 }
+//                 _ => {}
+//             }            
+//             match desc{
+//                 Some(new_description) => {
+//                     col_data.desc = new_description;
+//                 }
+//                 _ => {}
+//             }            
+//             match stat{
+//                 Some(new_status) => {
+//                     col_data.status = new_status;
+//                 }
+//                 _ => {}
+//             }
+
+//             canister_data_ref.collection_data = col_data;
+//             *canister_data.borrow_mut() = canister_data_ref;
+
+//             Ok("basic details updated succesfully".to_string())
+//         }
+//     })
+// }
+
+//update status of collection
+//only controller and canister itself can update the status
 #[update]
-fn update_basic_details( 
-    name: Option<String>,
-    desc: Option<String>,
-    stat: Option<Status>
+fn update_status( 
+    new_status: Status
 ) -> Result<String, String> {
 
-    CANISTER_DATA.with(|canister_data| {
+    let canister_id = ic_cdk::api::id();
+    let caller_account = caller();
+
+    if caller_account == canister_id || is_controller(&caller()) {
+    
+        CANISTER_DATA.with(|canister_data| {
+            
+            let mut collection_data = canister_data.borrow_mut().collection_data.to_owned();
+            collection_data.status = new_status;
+
+        }); 
         
-        let mut canister_data_ref= canister_data.borrow_mut().to_owned();
-        let mut col_data = canister_data_ref.collection_data;
+        Ok("basic details updated succesfully".to_string())
+    }
+    else{
+        Err("Unauthorized access".to_string())
+    }
 
-        let user_res = Principal::from_text(col_data.owner.clone());
-        let user: Principal;
-        match user_res{
-            Ok(id) => {user=id;},
-            Err(e) => return Err("collection owner not initialized".to_string())
-        };
-        if caller() != user {
-            Err("unathorized user".to_string())
-        }
-        else {
-            match name{
-                Some(new_name) => {
-                    col_data.name = new_name;
-                }
-                _ => {}
-            }            
-            match desc{
-                Some(new_description) => {
-                    col_data.desc = new_description;
-                }
-                _ => {}
-            }            
-            match stat{
-                Some(new_status) => {
-                    col_data.status = new_status;
-                }
-                _ => {}
-            }
-
-            canister_data_ref.collection_data = col_data;
-            *canister_data.borrow_mut() = canister_data_ref;
-
-            Ok("basic details updated succesfully".to_string())
-        }
-    })
 }
-
 
 // // #[update(guard = "allow_only_authorized_principal")] 
 #[update] 
@@ -336,7 +364,6 @@ fn icrc7_total_supply() -> u64 {
     collection_data.total_supply
 }
 
-// for now using NFTMetadata + Collection Metadata 
 #[query] 
 fn get_collection_metadata() -> Result<CollectionMetadata, String> {
 
@@ -346,7 +373,6 @@ fn get_collection_metadata() -> Result<CollectionMetadata, String> {
     Ok(collection_data)
 }
 
-// for now using NFTMetadata + Collection Metadata 
 #[query] 
 fn get_collection_status() -> Result<Status, String> {
 
@@ -448,7 +474,7 @@ fn mint(token_id: String, symbol: String, uri: String, owner: Principal) -> Resu
 }
 
 // Metadata items TBD
-// for now using NFTMetadata + Collection Metadata 
+//using NFTMetadata + Collection Metadata 
 #[update] 
 fn get_metadata(token_id : String) -> Result<Metadata, String> {
 
@@ -640,7 +666,7 @@ async fn primary_sale() -> Result<String, String> {
     }
 }
 
-//mint for user, to be minted using the approved-mint counter
+//mint for individual user, to be minted comparing the stored amount of user, and price of indivvidual NFT
 #[update(guard = "allow_only_canister")] 
 fn mint_approved_nfts(user_account: Principal) -> Result<String, String> {
     let canister_id = ic_cdk::api::id();
@@ -770,12 +796,12 @@ async fn get_payment_details() -> Result<(String, u64, u64), String> {
     Ok((account_id.to_string(), nft_price, user_stored_balance))
 }
 
+
 #[update]
 async fn get_balance(user_account: Principal) -> Result<u64, String> {
     let canister_id = ic_cdk::api::id();
 
     let ledger_canister_id = Principal::from_text(LEDGER_CANISTER_ID).unwrap();
-    // let account = AccountIdentifier::new(&caller_account, &principal_to_subaccount(&caller_account));
     let account = AccountIdentifier::new(&canister_id, &Subaccount::from(user_account));
 
     let balance_args = ic_ledger_types::AccountBalanceArgs { account };
@@ -795,6 +821,7 @@ async fn get_balance(user_account: Principal) -> Result<u64, String> {
     Ok(token_balance.e8s())
 }
 
+//refund escrow balance for a perticular user, when sale is rejected
 #[update(guard = "allow_only_canister")] 
 async fn refund_user_tokens(user : Principal) -> Result<String, String> {
     let canister_id = ic_cdk::api::id();
@@ -858,7 +885,7 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
 
 }
 
-//sale accepted, transfer funds to treasury
+//refund balance for a perticular user
 #[update]
 async fn refund_for_user_by_controller(user : Principal) -> Result<String, String> {
 
@@ -876,6 +903,7 @@ async fn refund_for_user_by_controller(user : Principal) -> Result<String, Strin
     }
 }
 
+//rejects the sale, refunding all users 
 #[update] 
 async fn sale_rejected() -> Result<String, String> {
 
@@ -901,6 +929,8 @@ async fn sale_rejected() -> Result<String, String> {
             }
         }
     }
+    
+    let _update_status_res = update_status(Status::Refunded);
     Ok("Amount refunded succesfully for all participants".to_string())
 }
 
@@ -1033,6 +1063,7 @@ async fn sale_accepted() -> Result<String,String>{
             return Err(e);
         }
     }
+    let _update_status_res = update_status(Status::Minted);
     CANISTER_DATA.with(|canister_data| { 
 
         let mut canister_data_ref = canister_data.borrow_mut();
@@ -1186,24 +1217,6 @@ fn get_sale_data(token_id : String) -> Result<SaleData, String> {
 
         Ok(sales_data.clone())
     })
-}
-
-#[query]
-async fn create_escrow_accountid(caller_account: Principal) -> Result<AccountIdentifier, String> {
-    let canister_id = ic_cdk::api::id();
-
-    let account = AccountIdentifier::new(&canister_id, &Subaccount::from(caller_account));
-
-    Ok(account)
-}
-
-#[query]
-async fn create_accountid(caller_account: Principal) -> Result<AccountIdentifier, String> {
-    let canister_id = ic_cdk::api::id();
-
-    let account = AccountIdentifier::new(&caller_account, &DEFAULT_SUBACCOUNT);
-
-    Ok(account)
 }
 
 //pre upgrade

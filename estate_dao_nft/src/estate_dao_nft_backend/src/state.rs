@@ -18,13 +18,14 @@ impl Default for Status {
     }
 }
  
-// const default_status: Status = Status::default();
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub enum Status{
     Draft,
     Upcoming,
     Live,
     Ended,
+    Minted,
+    Refunded
 }
 //Collection level metadata
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
@@ -125,6 +126,7 @@ pub struct MarketDetails {
 pub struct FormMetadata {
     pub name: String,
     pub desc: String,
+    pub status: Status,
     // pub symbol: String,
     pub supply_cap: u64,
     pub price: u64,

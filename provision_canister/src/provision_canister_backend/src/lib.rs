@@ -438,11 +438,14 @@ fn init_form_metadata(
     // }
 
     CANISTER_DATA.with(|canister_data| {
+        let mut form_data = form_input;
+        form_data.status = Status::Draft;
+
         let mut canister_data_ref = canister_data.borrow_mut().to_owned();
         canister_data_ref.form_counter = canister_data_ref.form_counter.saturating_add(1);
         let counter = canister_data_ref.form_counter;
     
-        canister_data_ref.form_data.insert(counter, form_input);
+        canister_data_ref.form_data.insert(counter, form_data);
     
         *canister_data.borrow_mut() = canister_data_ref;
         Ok("form initiated succesfully".to_string())

@@ -20,6 +20,7 @@ type FinancialDetails = record {
   returns : opt ReturnsFinancials;
 };
 type FormMetadata = record {
+  status : Status;
   supply_cap : nat64;
   image_uri : text;
   owner : text;
@@ -101,7 +102,7 @@ type SaleData = record {
   amount : nat64;
 };
 type SaleStatus = variant { Init; Complete; Incomplete };
-type Status = variant { Ended; Live; Draft; Upcoming };
+type Status = variant { Ended; Refunded; Live; Draft; Minted; Upcoming };
 type Timestamp = record { timestamp_nanos : nat64 };
 service : {
   add_known_principals : (principal) -> (Result);
