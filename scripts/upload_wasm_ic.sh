@@ -4,7 +4,7 @@ set -euo pipefail
 cd ./../estate_dao_nft
 # dfx start --background --clean
 
-dfx deploy estate_dao_nft_backend --ic
+dfx deploy estate_dao_nft_backend -y --ic
 
 gzip -f -1 ./target/wasm32-unknown-unknown/release/estate_dao_nft_backend.wasm
 
