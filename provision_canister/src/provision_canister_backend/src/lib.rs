@@ -493,8 +493,8 @@ async fn get_escrow_balance(minter: Principal, user_id: Principal) -> Result<u64
             let (res,): (Result<u64, String>,) = r;
             res
         }, 
-        Err(_) =>{
-            Err("error".to_string())
+        Err(e) =>{
+            Err(e.1)
         }
     }
 }
@@ -508,8 +508,8 @@ async fn get_sale_balance(minter: Principal, user_id: Principal) -> Result<(u64,
             let (res,): (Result<(u64, u64), String>,) = r;
             res
         }, 
-        Err(_) =>{
-            Err("error".to_string())
+        Err(e) =>{
+            Err(e.1)
         }
     }
 }
@@ -546,8 +546,8 @@ async fn sale_accept(minter: Principal) -> Result<String, String> {
             let (res,): (Result<String, String>,) = r;
             res
         }, 
-        Err(_) =>{
-            Err("error".to_string())
+        Err(e) =>{
+            Err(e.1)
         }
     }
 }
@@ -560,14 +560,14 @@ async fn sale_confirmed_refund(minter: Principal) -> Result<String, String> {
         return Err("UnAuthorised Access".into());
     } 
 
-    let res =  call(minter, "sale_rejected", (), ).await; 
+    let res: Result<(Result<String, String>,), (RejectionCode, String)> =  call(minter, "sale_rejected", (), ).await; 
     match res{
         Ok(r) => {
             let (res,): (Result<String, String>,) = r;
             res
-        }, 
-        Err(_) =>{
-            Err("error".to_string())
+        },
+        Err(e) =>{
+            Err(e.1)
         }
     }
 }
@@ -600,8 +600,8 @@ async fn get_nft_metadata(minter: Principal, token_id: String) -> Result<Metadat
             let (res,): (Result<Metadata, String>,) = r;
             res
         }, 
-        Err(_) =>{
-            Err("error".to_string())
+        Err(e) =>{
+            Err(e.1)
         }
     }
 }
@@ -615,23 +615,23 @@ async fn get_sale_data(minter: Principal, token_id: String) -> Result<SaleData, 
             let (res,): (Result<SaleData, String>,) = r;
             res
         }, 
-        Err(_) =>{
-            Err("error".to_string())
+        Err(e) =>{
+            Err(e.1)
         }
     }
 }
 
 #[update]
-async fn get_total_invested(minter: Principal) -> Result<Vec<Principal>, String> {  
+async fn get_total_invested(minter: Principal) -> Result<u64, String> {  
 
     let res =  call(minter, "get_total_invested", (), ).await; 
     match res{
         Ok(r) => {
-            let (res,): (Result<Vec<Principal>, String>,) = r;
-            res
+            let (res,): (u64,) = r;
+            Ok(res)
         }, 
-        Err(_) =>{
-            Err("error".to_string())
+        Err(e) =>{
+            Err(e.1)
         }
     }
 }
@@ -650,8 +650,8 @@ async fn reprocess_sale_accept(minter: Principal) -> Result<String, String> {
             let (res,): (Result<String, String>,) = r;
             res
         }, 
-        Err(_) =>{
-            Err("error".to_string())
+        Err(e) =>{
+            Err(e.1)
         }
     }
 }
@@ -670,8 +670,8 @@ async fn reprocess_sale_refund(minter: Principal) -> Result<String, String> {
             let (res,): (Result<String, String>,) = r;
             res
         }, 
-        Err(_) =>{
-            Err("error".to_string())
+        Err(e) =>{
+            Err(e.1)
         }
     }
 }

@@ -39,11 +39,11 @@ type NFTList = BTreeMap<String, NFTMetadata>;
 type TokenOwnerMap = BTreeMap<String, Account>;
 type UserTokensList = BTreeMap<Account, Vec<String>>;
 type SaleList = BTreeMap<String, SaleData>;
-type CumulativeTotalInvestmentInCollection =  u64;
+// type CumulativeTotalInvestmentInCollection =  u64;
 // type CumulativeTotalInvestmentInCollection =  u64;
 
 //todo remove used_balance
-type UserBalance = BTreeMap<Principal, (CumulativeTotalInvestmentInCollection, u64)>;
+type UserBalance = BTreeMap<Principal, (u64, u64)>;
 type UserPayAccount = BTreeMap<Principal, Principal>;
 
 #[derive(Clone, Debug, CandidType, Default, Deserialize, Serialize)]
@@ -505,17 +505,15 @@ fn update_NNS_account(
     // let caller = caller();
 
     // let user_pay_account = 
-    CANISTER_DATA.with(|canister_data| {   
-        let mut canister_data_ref =  canister_data.borrow().to_owned();
+    CANISTER_DATA.with_borrow_mut(|canister_data| {   
 
-        let user_payment_account = canister_data_ref.user_pay_account.get(&caller);       
+        let user_payment_account = canister_data.user_pay_account.get(&caller).cloned();       
         match user_payment_account {
             Some(_val) => {
                 Err("account already added".to_string())
             },
             None => {
-                canister_data_ref.user_pay_account.insert(caller, user_nns_account);
-                *canister_data.borrow_mut() = canister_data_ref;
+                canister_data.user_pay_account.insert(caller, user_nns_account);
                 Ok("account added successfully".to_string())
             }
         }
@@ -530,18 +528,18 @@ fn get_NNS_account(
     // let caller = caller();
 
     // let user_pay_account = 
-    let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().to_owned() });
+    CANISTER_DATA.with_borrow(|canister_data| { 
 
-    let user_payment_account = canister_data_ref.user_pay_account.get(&caller);       
-    match user_payment_account {
-        Some(nns_account) => {
-            Ok(*nns_account)
-        },
-        None => {
-            Err("account not added".to_string())
+        let user_payment_account = canister_data.user_pay_account.get(&caller).to_owned();       
+        match user_payment_account {
+            Some(nns_account) => {
+                Ok(*nns_account)
+            },
+            None => {
+                Err("account not added".to_string())
+            }
         }
-    }
+    })
 }
 
 
@@ -801,8 +799,8 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
     //transfer function of ic_ledger_types
     ic_ledger_types::transfer(ledger_canister_id, transfer_args)
         .await
-        .expect("call to ledger failed")
-        .expect("transfer failed");
+        .map_err(|_| "call to ledger failed".to_string())?
+        .map_err(|_| "transfer function failed".to_string())?; 
 
     // TODO: check balance of user account in block 
     //research
@@ -815,11 +813,7 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
         let user_balance = canister_data.user_balance.get(&user);
         match  user_balance{
             Some((_stored_bal, used_bal)) => {
-                    CANISTER_DATA.with(|canister_data| {
-                        let mut canister_data_ref= canister_data.borrow_mut();
-                        canister_data_ref.user_balance.insert(user, (0, *used_bal));
-
-                    });
+                    canister_data.user_balance.insert(user, (0, *used_bal));
             }   
             None => {
                 return  Err("user had no balance".to_string());

@@ -116,7 +116,7 @@ service : {
   get_nft_metadata : (principal, text) -> (Result_6);
   get_sale_balance : (principal, principal) -> (Result_7);
   get_sale_data : (principal, text) -> (Result_8);
-  get_total_invested : (principal) -> (Result_2);
+  get_total_invested : (principal) -> (Result_4);
   grant_commit_permission : (principal, principal) -> (Result);
   init_asset_wasm : (vec nat8) -> (Result);
   init_form_metadata : (FormMetadata) -> (Result);
