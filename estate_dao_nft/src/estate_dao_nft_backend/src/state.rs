@@ -40,7 +40,9 @@ pub struct CollectionMetadata {
     pub property_images: Vec<String>,
     pub additional_metadata: Option<AdditionalMetadata>,
     pub status: Status,
+    // TODO: option<Principal> 
     pub owner: String,
+    // TODO: add Account Type instead of string 
     pub treasury_account: String,
     pub is_initialised: bool,
     pub primary_sale_happened: bool,

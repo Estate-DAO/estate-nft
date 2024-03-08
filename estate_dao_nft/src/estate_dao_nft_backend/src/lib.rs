@@ -18,7 +18,7 @@ use std::{cell::RefCell};
 use std::collections::{BTreeMap, HashMap};
 
 use ic_ledger_types::{
-    AccountBalanceArgs, AccountIdentifier, Memo, Subaccount, Tokens, TransferArgs, DEFAULT_SUBACCOUNT, MAINNET_LEDGER_CANISTER_ID, TransferError
+    AccountBalanceArgs, AccountIdentifier, Memo, Subaccount, Tokens, TransferArgs, DEFAULT_SUBACCOUNT, TransferError
 };
 use icrc_ledger_types::{
     icrc1::account::Account, 
@@ -28,15 +28,22 @@ use icrc_ledger_types::{
     }
 };
 
+// TODO: store balance in u128
+// add wrapper from u64 -> u128
+// all inputs in ICP not e8s
+
 pub const LEDGER_CANISTER_ID: &str = "ryjl3-tyaaa-aaaaa-aaaba-cai";
 const ICP_FEE: u64 = 10_000;
 
 type NFTList = BTreeMap<String, NFTMetadata>;
-// todo tbd CollectionList
 type TokenOwnerMap = BTreeMap<String, Account>;
 type UserTokensList = BTreeMap<Account, Vec<String>>;
 type SaleList = BTreeMap<String, SaleData>;
-type UserBalance = BTreeMap<Principal, (u64, u64)>;
+type CumulativeTotalInvestmentInCollection =  u64;
+// type CumulativeTotalInvestmentInCollection =  u64;
+
+//todo remove used_balance
+type UserBalance = BTreeMap<Principal, (CumulativeTotalInvestmentInCollection, u64)>;
 type UserPayAccount = BTreeMap<Principal, Principal>;
 
 #[derive(Clone, Debug, CandidType, Default, Deserialize, Serialize)]
@@ -174,11 +181,9 @@ fn update_status(
 
     if caller_account == canister_id || is_controller(&caller()) {
     
-        CANISTER_DATA.with(|canister_data| {
+        CANISTER_DATA.with_borrow_mut(|canister_data| {
             
-            let mut collection_data = canister_data.borrow_mut().collection_data.to_owned();
-            collection_data.status = new_status;
-
+            canister_data.collection_data.status = new_status;
         }); 
         
         Ok("basic details updated succesfully".to_string())
@@ -195,12 +200,11 @@ fn update_market_details(
     market_det: MarketDetails
 ) -> Result<String, String> {
 
-    CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
+    CANISTER_DATA.with_borrow_mut(|canister_data| {
         
-        let mut canister_data_ref= canister_data.borrow_mut().to_owned();
-        let mut col_data = canister_data_ref.collection_data;
+        // let mut col_data = canister_data.collection_data;
 
-        let user_res = Principal::from_text(col_data.owner.clone());
+        let user_res = Principal::from_text(canister_data.collection_data.owner.clone());
         let user: Principal;
         match user_res{
             Ok(id) => {user=id;},
@@ -210,13 +214,15 @@ fn update_market_details(
             Err("unathorized user".to_string())
         }
         else {
-            let mut add_meta = col_data.additional_metadata.ok_or("collection not initialized")?;
-
-            add_meta.market_details = Some(market_det);
-            col_data.additional_metadata = Some(add_meta);
-
-            canister_data_ref.collection_data = col_data;
-            *canister_data.borrow_mut() = canister_data_ref;
+            let mut add_meta = &mut canister_data.collection_data.additional_metadata;
+            match add_meta {
+                Some(val) => {
+                    val.market_details = Some(market_det);
+                }
+                None => {
+                    return Err("additional metadata not initialized".to_string());
+                }
+            }
 
             Ok("market details added succesfully".to_string())
         }
@@ -229,65 +235,31 @@ fn update_financial_details(
     financial_det: FinancialDetails
 ) -> Result<String, String> {
 
-    CANISTER_DATA.with(|canister_data| {
+    CANISTER_DATA.with_borrow_mut(|canister_data| {
         
-        let mut canister_data_ref= canister_data.borrow_mut().to_owned();
-        let mut col_data = canister_data_ref.collection_data;
+        // let mut col_data = canister_data.collection_data;
 
-        let user_res = Principal::from_text(col_data.owner.clone());
-        let user: Principal;
-        match user_res{
-            Ok(id) => {user=id;},
-            Err(_) => return Err("collection owner not initialized".to_string())
-        };
-        if caller() != user {
-            Err("unathorized user".to_string())
-        }
-        else {
-            let mut add_meta = col_data.additional_metadata.ok_or("collection not initialized")?;
-
-            add_meta.financial_details = Some(financial_det);
-            col_data.additional_metadata = Some(add_meta);
-
-            canister_data_ref.collection_data = col_data;
-            *canister_data.borrow_mut() = canister_data_ref;
-
-
-            Ok("financial details added succesfully".to_string())
-        }
-    })
-}
-
-// //collection specific data
-// // #[update(guard = "allow_only_authorized_principal")] 
-#[update] 
-fn update_property_details( 
-    add_det: PropertyDetails
-) -> Result<String, String> {
-
-    CANISTER_DATA.with(|canister_data| {
-        
-        let mut canister_data_ref= canister_data.borrow_mut().to_owned();
-        let mut col_data = canister_data_ref.collection_data;
-
-        let user_res = Principal::from_text(col_data.owner.clone());
+        let user_res = Principal::from_text(canister_data.collection_data.owner.clone());
         let user: Principal;
         match user_res{
             Ok(id) => {user=id;},
             Err(_e) => return Err("collection owner not initialized".to_string())
         };
         if caller() != user {
-            return Err("unathorized user".to_string());
+            Err("unathorized user".to_string())
         }
-        let mut add_meta = col_data.additional_metadata.ok_or("collection not initialized")?;
-
-        add_meta.property_details = Some(add_det);
-        col_data.additional_metadata = Some(add_meta);
-
-        canister_data_ref.collection_data = col_data;
-        *canister_data.borrow_mut() = canister_data_ref;
-
-        Ok("additional details succesfully".to_string())
+        else {
+            let mut add_meta = &mut canister_data.collection_data.additional_metadata;
+            match add_meta {
+                Some(val) => {
+                    val.financial_details = Some(financial_det);
+                }
+                None => {
+                    return Err("additional metadata not initialized".to_string());
+                }
+            }
+            Ok("financial details added succesfully".to_string())
+        }
     })
 }
 
@@ -295,46 +267,79 @@ fn update_property_details(
 // //collection specific data
 // // #[update(guard = "allow_only_authorized_principal")] 
 #[update] 
-fn update_doc_details(
-    doc_details: Vec<HashMap<String, String>> //errorEnum 
-) -> Result<String, String> {
-
-    CANISTER_DATA.with(|canister_data| {
+fn update_property_details( 
+    add_det: PropertyDetails
+) -> Result<String, String> { 
+    CANISTER_DATA.with_borrow_mut(|canister_data| {
         
-        let mut canister_data_ref= canister_data.borrow_mut().to_owned();
-        let mut col_data = canister_data_ref.collection_data;
-
-        let user_res = Principal::from_text(col_data.owner.clone());
+        let user_res = Principal::from_text(canister_data.collection_data.owner.clone());
         let user: Principal;
         match user_res{
             Ok(id) => {user=id;},
-            Err(e) => return Err("collection owner not initialized".to_string())
+            Err(_e) => return Err("collection owner not initialized".to_string())
         };
         if caller() != user {
             Err("unathorized user".to_string())
         }
         else {
-            
-            let mut add_meta = col_data.additional_metadata.ok_or("collection not initialized")?;
+            let mut add_meta = &mut canister_data.collection_data.additional_metadata;
+            match add_meta {
+                Some(val) => {
+                    val.property_details = Some(add_det);
+                }
+                None => {
+                    return Err("additional metadata not initialized".to_string());
+                }
+            }
 
-            add_meta.documents = doc_details;
-            col_data.additional_metadata = Some(add_meta);
-
-            canister_data_ref.collection_data = col_data;
-            *canister_data.borrow_mut() = canister_data_ref;
-
-            Ok("Documents added succesfully".to_string())
+            Ok("property details added succesfully".to_string())
         }
     })
 }
 
+
+// //collection specific data
+// // #[update(guard = "allow_only_authorized_principal")] 
+// #[update] 
+// fn update_doc_details(
+//     doc_details: Vec<HashMap<String, String>> //errorEnum 
+// ) -> Result<String, String> {
+
+//     CANISTER_DATA.with_borrow_mut(|canister_data| {
+        
+//         let mut col_data = canister_data.collection_data;
+
+//         let user_res = Principal::from_text(col_data.owner.clone());
+//         let user: Principal;
+//         match user_res{
+//             Ok(id) => {user=id;},
+//             Err(e) => return Err("collection owner not initialized".to_string())
+//         };
+//         if caller() != user {
+//             Err("unathorized user".to_string())
+//         }
+//         else {
+            
+//             let mut add_meta = col_data.additional_metadata.ok_or("collection not initialized")?;
+
+//             add_meta.documents = doc_details;
+//             col_data.additional_metadata = Some(add_meta);
+
+//             canister_data.collection_data = col_data;
+
+//             Ok("Documents added succesfully".to_string())
+//         }
+//     })
+// }
+
 #[query] 
 fn icrc7_name() -> String {
 
-    let collection_data = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().collection_data.to_owned() });
-
-    collection_data.name
+    CANISTER_DATA.with(|canister_data| { 
+        let name = canister_data.borrow().collection_data.name.clone();
+    
+        name
+    })
 }
 
 #[query] 
@@ -382,9 +387,9 @@ fn get_collection_status() -> Result<Status, String> {
     Ok(collection_data.status)
 }
 
-// market details
+// financial details
 #[query] 
-fn get_market_details() -> Result<FinancialDetails, String> {
+fn get_financial_details() -> Result<FinancialDetails, String> {
 
     let collection_data = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().collection_data.to_owned() });
@@ -392,9 +397,9 @@ fn get_market_details() -> Result<FinancialDetails, String> {
     Ok(collection_data.additional_metadata.ok_or("collection not initialized")?.financial_details.ok_or("collection not initialized")?)
 }
 
-// financial details
+// market details
 #[query] 
-fn get_financial_details() -> Result<MarketDetails, String> {
+fn get_market_details() -> Result<MarketDetails, String> {
 
     let collection_data = CANISTER_DATA.with(|canister_data| { 
         canister_data.borrow().collection_data.to_owned() });
@@ -417,45 +422,12 @@ fn get_property_details() -> Result<PropertyDetails, String> {
 #[update(guard = "allow_only_canister")] 
 fn mint(token_id: String, symbol: String, uri: String, owner: Principal) -> Result<String, String> {
 
-    CANISTER_DATA.with(|canister_data| {
-        
-        let mut canister_data_ref= canister_data.borrow_mut().to_owned();
-        let mut token_owner_map = canister_data_ref.token_owner;
-        let mut nft_map = canister_data_ref.nft_store;
+    CANISTER_DATA.with_borrow_mut(|canister_data| {
 
         let owner_account = Account::from(owner);
-        token_owner_map.insert(token_id.clone(), owner_account);
+        canister_data.token_owner.insert(token_id.clone(), owner_account);
 
-        
-        // TOKEN_LIST.with(|user_token_list| {
-        //     let binding = user_token_list.borrow_mut();
-        //     let token_list =  binding.get(&owner);
-        //     // token_list.insert(token_id.to_string(), owner.clone())
-        //     match token_list {
-        //         Some(_v) => {
-
-        //             let mut token_list_map =  user_token_list.clone().borrow_mut().to_owned();
-        //             let mut list: Vec<String> = Vec::new();
-        //             token_list_map.get(&owner).unwrap().clone_into(&mut list); 
-        //             list.push(token_id.to_string());
-        //             token_list_map.insert(owner.clone(), list);
-
-        //             // list.push(token_id.to_string());
-        //             // token_list_map.insert(owner.clone(), *list);
-
-        //             // let mut list = token_list.unwrap(); 
-        //             // token_list.unwrap().push(token_id.to_string());
-        //         }
-        //         _ => {
-        //             let mut token_list =  user_token_list.borrow_mut();
-        //             let mut token_vec: Vec<String> = Vec::new();
-        //             token_vec.push(token_id.to_string());
-        //             token_list.insert(owner.clone(), token_vec);
-        //         }
-        //     };
-        // });
-
-        nft_map.insert(
+        canister_data.nft_store.insert(
                 token_id.clone(),
                 NFTMetadata{
                     nft_symbol: symbol,
@@ -464,10 +436,6 @@ fn mint(token_id: String, symbol: String, uri: String, owner: Principal) -> Resu
                 }
             );
     
-        canister_data_ref.token_owner = token_owner_map;
-        canister_data_ref.nft_store = nft_map ;
-        *canister_data.borrow_mut() = canister_data_ref;
-
         Ok("NFT minted succesfully".to_string())
     })
 
@@ -478,24 +446,19 @@ fn mint(token_id: String, symbol: String, uri: String, owner: Principal) -> Resu
 #[update] 
 fn get_metadata(token_id : String) -> Result<Metadata, String> {
 
-    CANISTER_DATA.with(|canister_data| {
+    CANISTER_DATA.with_borrow(|canister_data| {
 
-        let canister_data_ref= canister_data.borrow().to_owned();
-
-        let nft_map = canister_data_ref.nft_store;
-        let nft_data = nft_map.get(&token_id);
+        let nft_data = canister_data.nft_store.get(&token_id).cloned();
         let nft_data = nft_data.ok_or("NFT not found")?.to_owned();
-
-        let col_data = canister_data_ref.collection_data;
 
         let metadata = Metadata{
             symbol: nft_data.nft_symbol,
             nft_token_id: nft_data.nft_token_id,
             nft_uri: nft_data.nft_uri,
-            collection_name: col_data.name,
-            desc: col_data.desc,
-            total_supply: col_data.total_supply,
-            supply_cap: col_data.supply_cap
+            collection_name: canister_data.collection_data.name.clone(),
+            desc: canister_data.collection_data.desc.clone(),
+            total_supply: canister_data.collection_data.total_supply,
+            supply_cap: canister_data.collection_data.supply_cap
         };
     Ok(metadata)
     }) 
@@ -504,41 +467,33 @@ fn get_metadata(token_id : String) -> Result<Metadata, String> {
 #[update]
 fn icrc7_owner_of(token_id: String) -> Result<Account, String> {
 
-    CANISTER_DATA.with(|canister_data| {
+    CANISTER_DATA.with_borrow(|canister_data| {
         
-        let canister_data_ref= canister_data.borrow().to_owned();
-        let token_owner_map = canister_data_ref.token_owner;
+        let token_owner = canister_data.token_owner.get(&token_id).cloned();
 
-        let token_owner = token_owner_map.get(&token_id);
-
-        Ok(*token_owner.ok_or("invalid token_id")?)
+        token_owner.ok_or("invalid token_id".to_string())
     })
 }
 
 #[update]
 fn add_collection_image(image: String) -> Result<String, String> {
 
-    CANISTER_DATA.with(|canister_data| {
+    CANISTER_DATA.with_borrow_mut(|canister_data| {
 
-        let mut canister_data_ref= canister_data.borrow_mut().to_owned();
-        // let mut col_data = canister_data_ref.collection_data;
-
-        canister_data_ref.collection_data.property_images.push(image);
-
-        *canister_data.borrow_mut() = canister_data_ref;
+        canister_data.collection_data.property_images.push(image);
 
         Ok("sucess".to_string())
     })
 }
 
 #[query] 
-fn collection_image() -> Vec<String>{
+fn get_collection_image() -> Vec<String>{
 
-    let canister_data = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().to_owned() });
-    let col_data = canister_data.collection_data;
+    CANISTER_DATA.with_borrow(|canister_data| { 
+        canister_data.collection_data.property_images.clone()
+        
+    })
   
-    col_data.property_images
 }
 
 #[update] 
@@ -546,8 +501,8 @@ fn update_NNS_account(
     user_nns_account: Principal,
 ) -> Result<String, String> {
 
-    // let caller = get_caller().expect("Anonymus principal not allowed to make calls");
-    let caller = caller();
+    let caller = get_caller().expect("Anonymus principal not allowed to make calls");
+    // let caller = caller();
 
     // let user_pay_account = 
     CANISTER_DATA.with(|canister_data| {   
@@ -595,21 +550,16 @@ async fn primary_sale() -> Result<String, String> {
     let caller = caller();
     let canister_id = ic_cdk::api::id();
 
-    let canister_data_refe = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().to_owned() });
-
-    let collection_data = canister_data_refe.collection_data.to_owned();
-
-    let user = canister_data_refe.user_pay_account.get(&caller).ok_or("nns account not added for user")?;
+    let user = CANISTER_DATA.with_borrow(|canister_data| { 
+        canister_data.user_pay_account.get(&caller).cloned()
+    }).ok_or("nns account not added for user")?;
     
     let ledger_canister_id = Principal::from_text(LEDGER_CANISTER_ID).unwrap();
 
-    // new token_id
-    let token_counter = collection_data.total_supply;
+    let nft_price = CANISTER_DATA.with_borrow(|canister_data| { 
+        canister_data.collection_data.price });
 
-    let nft_price = collection_data.price;
-
-    let account = AccountIdentifier::new(&canister_id, &Subaccount::from(*user));
+    let account = AccountIdentifier::new(&canister_id, &Subaccount::from(user));
 
     let balance_args = ic_ledger_types::AccountBalanceArgs { account };
     let balance = ic_ledger_types::account_balance(ledger_canister_id, balance_args)
@@ -627,37 +577,28 @@ async fn primary_sale() -> Result<String, String> {
     let current_balance = token_balance.e8s();
 
     //fetch stored_balance
-    let user_data = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().user_balance.to_owned() });
+    let user_balance = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().user_balance.get(&user).cloned() });
 
-    let user_balance = user_data.get(&user);
     match  user_balance{
         Some((stored_bal, used_bal)) => {
-            if stored_bal < &current_balance {
-                
-                //check if user has any used_balance, useful if primary sale ahppens in multiple rounds
-                // todo
+            if stored_bal < current_balance {
 
-                CANISTER_DATA.with(|canister_data| {
-                    let mut canister_data_ref= canister_data.borrow().to_owned();
-                    canister_data_ref.user_balance.insert(*user, (current_balance, *used_bal));
+                CANISTER_DATA.with_borrow_mut(|canister_data| {
+                    canister_data.user_balance.insert(user, (current_balance, used_bal));
                     
-                    canister_data_ref.total_invested = canister_data_ref.total_invested.saturating_add(current_balance.saturating_sub(*stored_bal));
+                    canister_data.total_invested = canister_data.total_invested.saturating_add(current_balance.saturating_sub(stored_bal));
                     
-                    *canister_data.borrow_mut() = canister_data_ref;
                 });
-
                 return Ok("balance_updated".to_string());
             }
             return  Err("no new transfer".to_string());
         }   
         None => {
             if current_balance >= nft_price {
-                CANISTER_DATA.with(|canister_data| {
-                    let mut canister_data_ref= canister_data.borrow().to_owned();
-                    canister_data_ref.user_balance.insert(*user, (current_balance, 0));
-                    canister_data_ref.total_invested = canister_data_ref.total_invested.saturating_add(current_balance);
-                    *canister_data.borrow_mut() = canister_data_ref;
+                CANISTER_DATA.with_borrow_mut(|canister_data| {
+                    canister_data.user_balance.insert(user, (current_balance, 0));
+                    canister_data.total_invested = canister_data.total_invested.saturating_add(current_balance);
                 });
                 return Ok("balance updated for new user".to_string());
             } 
@@ -768,32 +709,30 @@ fn sale_confirmed_mint() -> Result<String, String> {
 }
 
 #[query]
-async fn get_payment_details() -> Result<(String, u64, u64), String> {
+fn get_payment_details() -> Result<(String, u64, u64), String> {
     let canister_id = ic_cdk::api::id();
     // let caller = get_caller().expect("Anonymus principal not allowed to make calls");
     let caller = caller();
 
-    // nft price
-    let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().to_owned() });
+    CANISTER_DATA.with_borrow(|canister_data| { 
 
-    let nft_price = canister_data_ref.collection_data.price;
-    let user = canister_data_ref.user_pay_account.get(&caller).ok_or("nns account not added for user")?;
-    
-    // account-id
-    let account_id = AccountIdentifier::new(&canister_id, &Subaccount::from(*user));
+        // nft price
+        let nft_price = canister_data.collection_data.price;
 
-    //user's invested amount
-    let user_data= canister_data_ref.user_balance;
+        // account-id
+        let nns_payment_account_principal = canister_data.user_pay_account.get(&caller).ok_or("nns account not added for user")?;
+        let account_id = AccountIdentifier::new(&canister_id, &Subaccount::from(*nns_payment_account_principal));
 
-    let user_balance = user_data.get(&user);
-    let user_stored_balance = match  user_balance{
-        Some((stored_bal, _used_bal)) => {
-            *stored_bal
-        }   
-        None => {0},
-    };
-    Ok((account_id.to_string(), nft_price, user_stored_balance))
+        //user's invested amount
+        let user_balance = canister_data.user_balance.get(&nns_payment_account_principal);
+        let user_stored_balance = match  user_balance{
+            Some((stored_bal, _used_bal)) => {
+                *stored_bal
+            }   
+            None => {0},
+        };
+        Ok((account_id.to_string(), nft_price, user_stored_balance))
+    })
 }
 
 
@@ -845,8 +784,8 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
         },
     }
     let escrow_token_balance = token_balance.e8s();
-    if escrow_token_balance == 0 || escrow_token_balance < ICP_FEE{ 
-        return Ok("no balance for user".to_string());
+    if escrow_token_balance <= ICP_FEE{ 
+        return Err("no balance for user".to_string());
     }
 
     let transfer_args = TransferArgs {
@@ -858,30 +797,36 @@ async fn refund_user_tokens(user : Principal) -> Result<String, String> {
         created_at_time: None,
     };
 
+    // TODO: handle error 
     //transfer function of ic_ledger_types
-    let _res = ic_ledger_types::transfer(ledger_canister_id, transfer_args)
+    ic_ledger_types::transfer(ledger_canister_id, transfer_args)
         .await
         .expect("call to ledger failed")
         .expect("transfer failed");
 
-    let user_data = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().user_balance.to_owned() });
+    // TODO: check balance of user account in block 
+    //research
 
-    let user_balance = user_data.get(&user);
-    match  user_balance{
-        Some((_stored_bal, used_bal)) => {
-                CANISTER_DATA.with(|canister_data| {
-                    let mut canister_data_ref= canister_data.borrow_mut().to_owned();
-                    canister_data_ref.user_balance.insert(user, (0, *used_bal));
+    //check for updated balance, while updating stored balance  
+    //TODO: check replace of Btreemap
 
-                    *canister_data.borrow_mut() = canister_data_ref;
-                });
-        }   
-        None => {
-            return  Err("user had no balance".to_string());
-        },
-    }
-    Ok("amount refunded to user".to_string())
+    CANISTER_DATA.with_borrow_mut(|canister_data| { 
+
+        let user_balance = canister_data.user_balance.get(&user);
+        match  user_balance{
+            Some((_stored_bal, used_bal)) => {
+                    CANISTER_DATA.with(|canister_data| {
+                        let mut canister_data_ref= canister_data.borrow_mut();
+                        canister_data_ref.user_balance.insert(user, (0, *used_bal));
+
+                    });
+            }   
+            None => {
+                return  Err("user had no balance".to_string());
+            },
+        }
+        Ok("amount refunded to user".to_string())
+    })
 
 }
 
@@ -911,25 +856,21 @@ async fn sale_rejected() -> Result<String, String> {
         return Err("UnAuthorised Access".into());
     }
 
-    let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().to_owned() });
+    let user_balance = CANISTER_DATA.with_borrow(|canister_data| { 
+        canister_data.user_balance.to_owned() });
 
-    let user_balance = canister_data_ref.user_balance;
     for (key, _value) in user_balance.iter() {
         let res = refund_user_tokens(*key).await;
         match res {
             Ok(_val) => {continue;},
             Err(_error_str) => {
-                CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
-                    let mut canister_data_ref= canister_data.borrow().to_owned();
-                    // let mut col_data = canister_data_ref.collection_data;
-                    canister_data_ref.sale_refund_reprocess.push(*key);
-                    *canister_data.borrow_mut() = canister_data_ref;
+                CANISTER_DATA.with_borrow_mut(|canister_data| {
+                    canister_data.sale_refund_reprocess.push(*key);
                 });
             }
         }
     }
-    
+
     let _update_status_res = update_status(Status::Refunded);
     Ok("Amount refunded succesfully for all participants".to_string())
 }
@@ -939,10 +880,10 @@ async fn sale_rejected() -> Result<String, String> {
 #[update(guard = "allow_only_canister")] 
 async fn sale_confirmed_transfer() -> Result<String, String> {
 
-    let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().to_owned() });
+    let user_balance = CANISTER_DATA.with_borrow(|canister_data| { 
+        canister_data.user_balance.to_owned()});
 
-    let user_balance = canister_data_ref.user_balance;
+    // let user_balance = canister_data_ref.user_balance;
     for (key, _value) in user_balance.iter() {
         let res = transfer_user_tokens(*key).await;
         match res {
@@ -993,7 +934,7 @@ async fn transfer_user_tokens(user : Principal) -> Result<String, String> {
     let treasury_id = collection_data.treasury_account;
     let nft_price = collection_data.price;
     
-    let treasury_principal = Principal::from_text(treasury_id).expect("invalid treasury principal");
+    let treasury_principal = Principal::from_text(treasury_id).unwrap();
 
     let treasury_account = AccountIdentifier::new(&treasury_principal, &DEFAULT_SUBACCOUNT);
     
@@ -1020,8 +961,8 @@ async fn transfer_user_tokens(user : Principal) -> Result<String, String> {
     //transfer function of ic_ledger_types
     let _res = ic_ledger_types::transfer(ledger_canister_id, transfer_args)
         .await
-        .expect("call to ledger failed")
-        .expect("transfer failed");
+        .map_err(|_| "call to ledger failed".to_string())?
+        .map_err(|_| "call to ledger failed".to_string())?; 
 
 
     CANISTER_DATA.with(|canister_data| {
@@ -1131,19 +1072,17 @@ async fn reprocess_refund() -> Result<String, String> {
         return Err("UnAuthorised Access".into());
     }
 
-    let canister_data_ref = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().to_owned() });
+    let sale_refund_reprocess = CANISTER_DATA.with_borrow(|canister_data| { 
+        canister_data.sale_refund_reprocess.to_owned() });
 
-    if !canister_data_ref.sale_refund_reprocess.is_empty(){
-        for (index, key) in canister_data_ref.sale_refund_reprocess.iter().enumerate() {
+    if !sale_refund_reprocess.is_empty(){
+        for (index, key) in sale_refund_reprocess.iter().enumerate() {
             let res = refund_user_tokens(*key).await;
             match res {
                 Ok(_val) => {
-                    CANISTER_DATA.with(|canister_data: &RefCell<CanisterData>| {
-                        let mut canister_data_ref= canister_data.borrow().to_owned();
-                        // let mut col_data = canister_data_ref.collection_data;
-                        let _removed_val = canister_data_ref.sale_refund_reprocess.remove(index);
-                        *canister_data.borrow_mut() = canister_data_ref;
+                    CANISTER_DATA.with_borrow_mut(|canister_data| {
+                        // let mut canister_data_ref= canister_data.borrow().to_owned();
+                        canister_data.sale_refund_reprocess.remove(index);
                     });
                 },
                 Err(_error_str) => { 
