@@ -108,6 +108,7 @@ service : {
   add_known_principals : (principal) -> (Result);
   approve_collection : (nat16, bool) -> (Result_1);
   filter_status : (Status) -> (Result_2);
+  get_admins : () -> (vec principal) query;
   get_all_canisters : () -> (Result_3) query;
   get_all_minter_canisters : () -> (Result_2);
   get_escrow_balance : (principal, principal) -> (Result_4);
@@ -121,6 +122,7 @@ service : {
   init_asset_wasm : (vec nat8) -> (Result);
   init_form_metadata : (FormMetadata) -> (Result);
   init_minter_wasm : (vec nat8) -> (Result);
+  remove_known_principals : (principal) -> (Result_2);
   reprocess_sale_accept : (principal) -> (Result);
   reprocess_sale_refund : (principal) -> (Result);
   revoke_commit_permission : (principal, principal) -> (Result);

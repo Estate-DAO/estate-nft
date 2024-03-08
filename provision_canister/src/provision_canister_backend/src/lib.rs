@@ -107,6 +107,37 @@ fn verify_admin(
     false
 }
 
+#[query] 
+fn get_admins() -> Vec<Principal> {
+
+    let principal_list = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().known_principals.to_owned() });
+
+    principal_list
+}
+
+#[update] 
+fn remove_known_principals( 
+    admin_to_remove: Principal,
+) -> Result<Vec<Principal>, String> {
+
+    if !is_controller(&caller()) {
+        return Err("UnAuthorised Access".into());
+    }
+
+    CANISTER_DATA.with_borrow_mut(|canister_data| { 
+        // let principal_list = canister_data.known_principals });
+
+        if !canister_data.known_principals.contains(&admin_to_remove) {
+            return Err("admin does not exist".to_string());
+        } 
+        canister_data.known_principals.retain(|&x| x != admin_to_remove);
+
+        Ok(canister_data.known_principals.to_owned())
+    })
+}
+
+
 #[update] 
 fn update_key( 
     new_str: String,
