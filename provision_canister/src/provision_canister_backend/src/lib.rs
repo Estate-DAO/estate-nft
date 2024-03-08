@@ -81,18 +81,13 @@ fn add_known_principals(
         return Err("UnAuthorised Access".into());
     }
 
-    let principal_list = CANISTER_DATA.with(|canister_data| { 
-        canister_data.borrow().known_principals.to_owned() });
+    CANISTER_DATA.with_borrow_mut(|canister_data| { 
+        // let principal_list = canister_data.known_principals });
 
-    if principal_list.contains(&new_admin) {
-        return Err("admin already added".to_string());
-    } 
-
-    CANISTER_DATA.with(|canister_data| {   
-        let mut canister_data_ref =  canister_data.borrow().to_owned();
-
-        canister_data_ref.known_principals.push(new_admin);
-        *canister_data.borrow_mut() = canister_data_ref;
+        if canister_data.known_principals.contains(&new_admin) {
+            return Err("admin already added".to_string());
+        } 
+        canister_data.known_principals.push(new_admin);
 
         Ok("new admin added succesfully".to_string())
     })
@@ -121,12 +116,9 @@ fn update_key(
         return Err("UnAuthorised Access".into());
     }
 
-    CANISTER_DATA.with(|canister_data| {   
-        let mut canister_data_ref =  canister_data.borrow().to_owned();
-        canister_data_ref.stored_key = new_str;       
-        *canister_data.borrow_mut() = canister_data_ref; 
+    CANISTER_DATA.with_borrow_mut(|canister_data| {   
+        canister_data.stored_key = new_str;       
         Ok("key updated succesfully".to_string())
-
     })
 
 }
@@ -136,13 +128,13 @@ fn verify_key(
     key: String,
 ) -> bool {
 
-    let stored_str = CANISTER_DATA.with(|canister_data| {
-        canister_data.borrow().stored_key.to_owned() });  
+    CANISTER_DATA.with_borrow(|canister_data| {
 
-    if stored_str == key{
-        return true;
-    }
-    false
+        if canister_data.stored_key == key{
+            return true;
+        }
+        false
+    })
 }
 
 #[update] 
@@ -153,10 +145,11 @@ fn init_minter_wasm(
         return Err("UnAuthorised Access".into());
     }
 
-    CANISTER_DATA.with(|canister_data| {
-        canister_data.borrow_mut().wasm_store.minter_wasm_blob = wasm;
-    });
-    Ok("minter set succesfully".to_string())
+    CANISTER_DATA.with_borrow_mut(|canister_data| {
+        canister_data.wasm_store.minter_wasm_blob = wasm;
+
+        Ok("minter set succesfully".to_string())
+    })
 }
 
 #[update] 
@@ -167,10 +160,11 @@ fn init_asset_wasm(
         return Err("UnAuthorised Access".into());
     }
 
-    CANISTER_DATA.with(|canister_data| {
-        canister_data.borrow_mut().wasm_store.asset_wasm_blob = wasm;
-    });
-    Ok("asset wasm set succesfully".to_string())
+    CANISTER_DATA.with_borrow_mut(|canister_data| {
+        canister_data.wasm_store.asset_wasm_blob = wasm;
+
+        Ok("asset wasm set succesfully".to_string())
+    })
 }
 
 //collection specific data
@@ -179,10 +173,9 @@ fn get_form_metadata(
     index: u16 
 ) -> Result<FormMetadata, String> {
 
-    CANISTER_DATA.with(|canister_data| {
-        let canister_data_ref =  canister_data.borrow().to_owned();
-        let form_data = canister_data_ref.form_data.get(&index).ok_or("no data for this index".to_string())?;
-        Ok(form_data.clone())
+    CANISTER_DATA.with_borrow(|canister_data| {
+        let form_data = canister_data.form_data.get(&index).cloned().ok_or("no data for this index".to_string())?;
+        Ok(form_data)
     })
 }
 
@@ -211,13 +204,13 @@ fn revoke_commit_permission(id: Principal, user_id: Principal) -> Result<String,
 #[update]
 fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
 
-    CANISTER_DATA.with(|canister_data| {
+    CANISTER_DATA.with_borrow_mut(|canister_data| {
         let mut minter_canister_vec: Vec<Principal> = Vec::new();
-        let canister_map = canister_data.borrow_mut().canister_store.to_owned();
-        if canister_map.to_owned().is_empty() {
+
+        if canister_data.canister_store.is_empty() {
             return Ok(minter_canister_vec);
         }
-        for (_key, value) in canister_map.to_owned().iter() {
+        for (_key, value) in canister_data.canister_store.iter() {
             minter_canister_vec.push(value.to_owned().minter_canister);
         }
         Ok(minter_canister_vec)
@@ -227,14 +220,13 @@ fn get_all_minter_canisters() -> Result<Vec<Principal>, String> {
 #[query]
 fn get_all_canisters() -> Result<Vec<CanisterIds>, String> {
 
-    CANISTER_DATA.with(|canister_data| {
+    CANISTER_DATA.with_borrow_mut(|canister_data| {
         let mut canister_vec: Vec<CanisterIds> = Vec::new();
 
-        let canister_map = canister_data.borrow().canister_store.to_owned();
-        if canister_map.is_empty() {
+        if canister_data.canister_store.is_empty() {
             return Ok(canister_vec);
         }
-        for (_key, value) in canister_map.iter() {
+        for (_key, value) in canister_data.canister_store.iter() {
             canister_vec.push(value.to_owned());
         }
         Ok(canister_vec)
@@ -286,15 +278,14 @@ async fn approve_collection(index: u16, approval: bool) -> Result<ApprovedRespon
         return Err("unauthorised user".to_string());
     }
     
-    let canister_data_ref = CANISTER_DATA.with(|canister_data|{canister_data.borrow().to_owned()});
-    let form_list = canister_data_ref.form_data;
+    let form_list = CANISTER_DATA.with_borrow(|canister_data|{canister_data.form_data.to_owned()});
 
     let form_data = form_list.get(&index)
         .ok_or("no form data for the index")?;
 
     if approval {
 
-        let wasms = canister_data_ref.wasm_store;
+        let wasms = CANISTER_DATA.with_borrow(|canister_data|{canister_data.wasm_store.to_owned()});
 
         let settings = CanisterSettings {
             controllers: Some(vec![ api::id()]),
@@ -387,7 +378,6 @@ async fn approve_collection(index: u16, approval: bool) -> Result<ApprovedRespon
             }
         }
 
-        let form_install_args = candid::encode_args((form_data,)).expect("Failed to encode arguments");
 
         let res = call(minter_canister_id, "init_collection", (form_data,), ).await; 
         
@@ -400,28 +390,26 @@ async fn approve_collection(index: u16, approval: bool) -> Result<ApprovedRespon
             }
         };
         
-        CANISTER_DATA.with(|canister_data| {
-            let mut canister_data_ref = canister_data.borrow_mut().to_owned();
+        CANISTER_DATA.with_borrow_mut(|canister_data| {
+            // let mut canister_data_ref = canister_data.borrow_mut().to_owned();
 
-            let _form_entry = canister_data_ref.form_data.remove(&index);
+            canister_data.form_data.remove(&index);
 
             let canister_id_data = CanisterIds{
                 asset_canister: asset_canister_id,
                 minter_canister: minter_canister_id
             };
 
-            canister_data_ref.canister_store.insert(minter_canister_id.clone(), canister_id_data.clone());
-            *canister_data.borrow_mut() = canister_data_ref;
+            canister_data.canister_store.insert(minter_canister_id.clone(), canister_id_data.clone());
 
             Ok(ApprovedResponse::CanisterId(canister_id_data))
         })
     }
     else {
-         CANISTER_DATA.with(|canister_data| {
-            let mut canister_data_ref = canister_data.borrow_mut().to_owned();
+         CANISTER_DATA.with_borrow_mut(|canister_data| {
 
-            let _form_entry = canister_data_ref.form_data.remove(&index);
-            *canister_data.borrow_mut() = canister_data_ref;
+            canister_data.form_data.remove(&index);
+
             Ok(ApprovedResponse::StrResp("collection rejected".to_string()))
         })
     }
@@ -437,17 +425,14 @@ fn init_form_metadata(
     //     return Err("unauthorised user".to_string());
     // }
 
-    CANISTER_DATA.with(|canister_data| {
+    CANISTER_DATA.with_borrow_mut(|canister_data| {
         let mut form_data = form_input;
         form_data.status = Status::Draft;
 
-        let mut canister_data_ref = canister_data.borrow_mut().to_owned();
-        canister_data_ref.form_counter = canister_data_ref.form_counter.saturating_add(1);
-        let counter = canister_data_ref.form_counter;
+        canister_data.form_counter.saturating_add(1);
     
-        canister_data_ref.form_data.insert(counter, form_data);
+        canister_data.form_data.insert(canister_data.form_counter, form_data);
     
-        *canister_data.borrow_mut() = canister_data_ref;
         Ok("form initiated succesfully".to_string())
     })
 }
