@@ -10,7 +10,7 @@ To get the hash for canisters:
 - The output of the above command should contain `Module hash` followed up with the hash value. Example output:
 
   ```
-  $ > dfx canister info vyatz-hqaaa-aaaam-qauea-cai --network=ic
+  $ > dfx canister info tu3je-fyaaa-aaaap-abymq-cai --network=ic
 
   Controllers: v3mpp-bismc-wjug7-6t6jc-iqu2b-64xh3-rpwld-sw5e2-fsecm-6lfss-aqe
   Module hash: 0x1682ca6286cbbeef23abfe7c3d35b8e1d1dec884b40696637e40bc6fe1ac1e3a
