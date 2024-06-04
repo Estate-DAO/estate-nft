@@ -21,6 +21,6 @@ To get the hash for canister deployment:
 - Go to [Github actions deployment runs](https://github.com/Estate-DAO/estate-nft/actions/workflows/deploy.yml)
 - Open the latest succesful run. ([Click to see an example run](https://github.com/Estate-DAO/estate-nft/actions/runs/8389802581))
 - Go to any of the `Deploy all canisters` jobs. ([Click to see an example job](https://github.com/Estate-DAO/estate-nft/actions/runs/8389802581/job/22976747707))
-- Open the `Deploy canister` step. You should find the `Module hash` in this step. This value should match the value you got locally. ([Click to see an example step]([https://github.com/go-bazzinga/hot-or-not-backend-canister/actions/runs/4900015913/jobs/8750374252#step:8:16](https://github.com/Estate-DAO/estate-nft/actions/runs/8389802581/job/22976747707)https://github.com/Estate-DAO/estate-nft/actions/runs/8389802581/job/22976747707))
+- Open the `Deploy canister` step. You should find the `Module hash` in this step. This value should match the value you got locally. ([Click to see an example step]([https://github.com/Estate-DAO/estate-nft/actions/runs/4900015913/jobs/8750374252#step:8:16](https://github.com/Estate-DAO/estate-nft/actions/runs/8389802581/job/22976747707)https://github.com/Estate-DAO/estate-nft/actions/runs/8389802581/job/22976747707))
 
 ---
