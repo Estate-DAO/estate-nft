@@ -1,14 +1,7 @@
 name: Deploy
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "estate_dao_nft/**"
-      - "provision_canister/**"
-      - "scripts/upload_wasm_ic.sh"
-      - ".github/workflows/deploy.yml"
-
+  workflow_dispatch:
+    
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
