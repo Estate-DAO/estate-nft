@@ -28,7 +28,18 @@ struct EmptyArgs {}
 type FormData = BTreeMap<u16, FormMetadata>;
 type CanisterStore = BTreeMap<Principal, CanisterIds>;
 
-// type FormDataPropDetails = BTreeMap<u16, PropertyDetails>;
+#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
+pub struct Config{
+    pub authorised_principal: Principal,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            authorised_principal: Principal::anonymous(), 
+        }
+    }
+}
 
 #[derive(Clone, Debug, CandidType, Default, Deserialize, Serialize)]
 pub struct CanisterData { 
@@ -38,6 +49,7 @@ pub struct CanisterData {
     pub canister_store: CanisterStore,
     pub stored_key: String,
     pub known_principals: Vec<Principal>,
+    pub config: Config,
 }
 
 thread_local! {
@@ -135,6 +147,33 @@ fn remove_known_principals(
 
         Ok(canister_data.known_principals.to_owned())
     })
+}
+
+#[update]
+fn set_authorised_principal(new_principal: Principal) -> Result<String, String> {
+    let caller = caller();
+    if caller != Principal::from_text("v3mpp-bismc-wjug7-6t6jc-iqu2b-64xh3-rpwld-sw5e2-fsecm-6lfss-aqe").unwrap() {
+        return Err("UnAuthorised Access".into());
+    }
+    CANISTER_DATA.with_borrow_mut(|canister_data| { 
+        canister_data.config.authorised_principal = new_principal;
+
+        Ok("authorised principal added succesfully".to_string())
+    })
+}
+
+#[query]
+fn get_authorised_principal() -> Result<Principal, String> {
+    let caller = caller();
+    if caller != Principal::from_text("v3mpp-bismc-wjug7-6t6jc-iqu2b-64xh3-rpwld-sw5e2-fsecm-6lfss-aqe").unwrap()
+    {    
+        return Err("UnAuthorised Access".into());
+    }
+    let authorised_principal = CANISTER_DATA.with(|canister_data| { 
+        canister_data.borrow().config.authorised_principal.to_owned() });
+    
+    return Ok(authorised_principal);
+
 }
 
 
