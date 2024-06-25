@@ -1,0 +1,51 @@
+name: Submit SNS Proposal
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+            submodules: "true"
+
+      - name: Install dfx
+        uses: dfinity/setup-dfx@main
+        with:
+            dfx-version: "0.16.1"
+
+      - name: Confirm successful installation
+        run: dfx --version
+
+      - name: Import DFX identity
+        run: |
+          touch actions_identity.pem
+          echo "${{ secrets.ESTATE_DAO_SNS_PROPOSAL_SUBMITTER_PRIVATE_KEY }}" > actions_identity.pem
+          dfx identity import --storage-mode=plaintext actions actions_identity.pem
+          rm actions_identity.pem
+          dfx identity use actions
+
+      - name: Build
+        run: |
+            cd provision_canister
+            dfx build provision_canister_backend --network=ic
+            hash=$(sha256sum < .dfx/local/canisters/provision_canister_backend/provision_canister_backend.wasm)
+            echo "Module Hash: ${hash}"
+
+      - name: Install quill from GitHub Releases
+        run: |
+            curl -LJO https://github.com/dfinity/quill/releases/download/v0.4.2/quill-linux-x86_64-musl
+            mv quill-linux-x86_64-musl quill
+            chmod +x quill
+
+      - name: create an SNS proposal to upgrade the canister
+        run: |
+            cd provision_canister
+            echo "TARGET_CANISTER_ID=$(dfx canister id provision_canister_backend --network=ic)" >> $GITHUB_ENV
+            export $WASM_PATH=".dfx/local/canisters/provision_canister_backend/provision_canister_backend.wasm"  
+            quill sns make-upgrade-canister-proposal --target-canister-id "${{ env.TARGET_CANISTER_ID }}" --wasm-path $WASM_PATH ${{ secrets.ESTATE_DAO_SNS_PROPOSAL_SUBMITTER_NEURON_ID }} > message.json  
+            quill send message.json
+
