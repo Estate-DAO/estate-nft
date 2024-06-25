@@ -32,7 +32,7 @@ jobs:
         run: |
             cd provision_canister
             dfx build provision_canister_backend --network=ic
-            hash=$(sha256sum < .dfx/local/canisters/provision_canister_backend/provision_canister_backend.wasm)
+            hash=$(sha256sum < .dfx/ic/canisters/provision_canister_backend/provision_canister_backend.wasm)
             echo "Module Hash: ${hash}"
 
       - name: Install quill from GitHub Releases
@@ -45,7 +45,7 @@ jobs:
         run: |
             cd provision_canister
             echo "TARGET_CANISTER_ID=$(dfx canister id provision_canister_backend --network=ic)" >> $GITHUB_ENV
-            export $WASM_PATH=".dfx/local/canisters/provision_canister_backend/provision_canister_backend.wasm"  
+            export $WASM_PATH=".dfx/ic/canisters/provision_canister_backend/provision_canister_backend.wasm"  
             quill sns make-upgrade-canister-proposal --target-canister-id "${{ env.TARGET_CANISTER_ID }}" --wasm-path $WASM_PATH ${{ secrets.ESTATE_DAO_SNS_PROPOSAL_SUBMITTER_NEURON_ID }} > message.json  
             quill send message.json
 
