@@ -5,7 +5,7 @@ on:
       - main
 
 jobs:
-  test:
+  submit_upgrade_proposal:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +31,7 @@ jobs:
       - name: Build
         run: |
             cd provision_canister
+            rustup target add wasm32-unknown-unknown
             dfx build provision_canister_backend --network=ic
             hash=$(sha256sum < .dfx/ic/canisters/provision_canister_backend/provision_canister_backend.wasm)
             echo "Module Hash: ${hash}"
