@@ -41,6 +41,10 @@ jobs:
             mv quill-linux-x86_64-musl quill
             chmod +x quill
 
+      - name: Confirm successful installation of quill
+        run: |
+          ./quill sns -h
+        
       - name: create an SNS proposal to upgrade the canister
         run: |
             cd provision_canister
@@ -48,7 +52,7 @@ jobs:
             export CANISTER_ID=$(dfx canister id ${CANISTER_NAME} --network=ic)
             mkdir -p "proposals/${CANISTER_NAME}"
             touch "proposals/${CANISTER_NAME}/upgrade.json"
-            ./quill sns \
+            ../quill sns \
                 --canister-ids-file ./sns_canister_ids.json \
                 --pem-file actions_identity.pem \
                 make-upgrade-canister-proposal \
@@ -57,7 +61,7 @@ jobs:
                 --url 'https://wbdy5-yyaaa-aaaap-abysq-cai.icp0.io/' \
                 --target-canister-id $CANISTER_ID \
                 --wasm-path .dfx/ic/canisters/${CANISTER_NAME}/${CANISTER_NAME}.wasm \
-                ${{ secrets.ESTATE_DAO_SNS_PROPOSAL_SUBMITTER_NEURON_ID }} > "proposals/${CANISTER_NAME}/upgrade.json"
-            ./quill send proposals/${CANISTER_NAME}/upgrade.json --yes
+                ${{ vars.ESTATE_DAO_SNS_PROPOSAL_SUBMITTER_NEURON_ID }} > "proposals/${CANISTER_NAME}/upgrade.json"
+            ../quill send proposals/${CANISTER_NAME}/upgrade.json --yes
       
 
