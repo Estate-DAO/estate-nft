@@ -65,4 +65,4 @@ jobs:
                 --canister-upgrade-arg "()" \
                 ${{ vars.ESTATE_DAO_SNS_PROPOSAL_SUBMITTER_NEURON_ID }} > "proposals/${CANISTER_NAME}/upgrade.json"
             ./quill send proposals/${CANISTER_NAME}/upgrade.json --yes
-      
+
