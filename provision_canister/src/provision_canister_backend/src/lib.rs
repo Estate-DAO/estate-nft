@@ -598,12 +598,8 @@ async fn sale_accept(minter: Principal) -> Result<String, String> {
     }
 }
 
-#[update]
+#[update(guard = "caller_is_authorized_principal")]
 async fn sale_confirmed_refund(minter: Principal) -> Result<String, String> {
-    if !is_controller(&caller()) {
-        return Err("UnAuthorised Access".into());
-    }
-
     let res: Result<(Result<String, String>,), (RejectionCode, String)> =
         call(minter, "sale_rejected", ()).await;
     match res {
