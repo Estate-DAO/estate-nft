@@ -56,30 +56,6 @@ pub struct CanisterData {
     pub config: Config,
 }
 
-#[derive(Clone, Debug, CandidType, Default, Serialize, Deserialize)]
-pub struct CanisterDataV1 {
-    pub form_data: FormData,
-    pub form_counter: u16,
-    pub wasm_store: WasmStore,
-    pub canister_store: CanisterStore,
-    pub stored_key: String,
-    pub known_principals: Vec<Principal>,
-}
-
-impl From<CanisterDataV1> for CanisterData {
-    fn from(value: CanisterDataV1) -> Self {
-        Self {
-            config: Config::default(),
-            form_data: value.form_data,
-            form_counter: value.form_counter,
-            wasm_store: value.wasm_store,
-            canister_store: value.canister_store,
-            stored_key: value.stored_key,
-            known_principals: value.known_principals,
-        }
-    }
-}
-
 thread_local! {
     static CANISTER_DATA: RefCell<CanisterData> = RefCell::default();
 }
@@ -712,12 +688,8 @@ async fn reprocess_sale_accept(minter: Principal) -> Result<String, String> {
 }
 
 //for reprocessing failed accept payment and mint
-#[update]
+#[update(guard = "caller_is_authorized_principal")]
 async fn reprocess_sale_refund(minter: Principal) -> Result<String, String> {
-    if !is_controller(&caller()) {
-        return Err("UnAuthorised Access".into());
-    }
-
     let res = call(minter, "reprocess_refund", ()).await;
     match res {
         Ok(r) => {
@@ -741,30 +713,14 @@ fn pre_upgrade() {
 //post upgrade
 #[ic_cdk::post_upgrade]
 fn post_upgrade() {
-    match storage::stable_restore::<(CanisterDataV1,)>() {
-        Ok((canister_data_v1,)) => {
-            CANISTER_DATA.with_borrow_mut(|canister_data| {
-                *canister_data = CanisterData::from(canister_data_v1)
-            });
-            insert_authorized_principal();
+    match storage::stable_restore::<(CanisterData,)>() {
+        Ok((data,)) => {
+            CANISTER_DATA.with_borrow_mut(|canister_data| *canister_data = data);
         }
         Err(err) => {
             panic!("Failed to restore canister data from stable memory {}", err);
         }
     }
-}
-
-pub fn insert_authorized_principal() {
-    let authorized_user_principal =
-        Principal::from_text("v3mpp-bismc-wjug7-6t6jc-iqu2b-64xh3-rpwld-sw5e2-fsecm-6lfss-aqe")
-            .unwrap();
-
-    CANISTER_DATA.with_borrow_mut(|canister_data| {
-        canister_data
-            .config
-            .authorised_principals
-            .insert(authorized_user_principal)
-    });
 }
 
 // Enable Candid export
