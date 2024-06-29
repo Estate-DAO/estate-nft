@@ -1,23 +1,26 @@
+use candid::{
+    types::{number::Nat, principal},
+    CandidType, Deserialize, Principal,
+};
 use ic_ledger_types::Timestamp;
+use icrc_ledger_types::icrc1::account::Account;
 use serde::Serialize;
-use candid::{types::{number::Nat, principal}, CandidType, Deserialize, Principal};
 use std::collections::HashMap;
-use icrc_ledger_types::icrc1::account::Account; 
- 
+
 impl Default for Status {
     fn default() -> Self {
         Status::Draft
     }
 }
- 
-#[derive(Clone, Debug, PartialEq, Eq ,CandidType, Deserialize, Serialize)]
-pub enum Status{
+
+#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize, Serialize)]
+pub enum Status {
     Draft,
     Upcoming,
     Live,
     Ended,
     Minted,
-    Refunded
+    Refunded,
 }
 
 //Collection level metadata
@@ -35,7 +38,7 @@ pub struct FormMetadata {
     pub owner: String,
     pub treasury: String,
 }
- 
+
 //Additional metadata
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
 pub struct AdditionalMetadata {
@@ -44,13 +47,13 @@ pub struct AdditionalMetadata {
     pub documents: Vec<HashMap<String, String>>,
     pub market_details: Option<MarketDetails>,
 }
- 
+
 //Documents metadata
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
 pub struct PropertyDetails {
     pub last_renovated: Option<f32>,
     pub beds: Option<u32>,
-    pub year_built: Option<u32>, 
+    pub year_built: Option<u32>,
     pub square_footage: Option<f32>,
     pub flood_zone: Option<bool>,
     pub occupied: Option<bool>,
@@ -61,24 +64,24 @@ pub struct PropertyDetails {
     pub affordability: Option<f32>,
     pub price_per_sq_foot: Option<f32>,
 }
- 
+
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
 pub struct InvestmentFinancials {
     pub underlying_asset_price: Option<f32>,
     pub platform_closing_fee: Option<f32>,
-    pub initial_maintenance_reserve: Option<f32>, 
-    pub min_investment: Option<u64>,     
+    pub initial_maintenance_reserve: Option<f32>,
+    pub min_investment: Option<u64>,
 }
- 
+
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
 pub struct ReturnsFinancials {
     pub total_5_year_irr: Option<f32>,
     pub projected_appreciation: Option<f32>,
     pub average_5_year_roi: Option<f32>,
-    pub cap_rate: Option<f32>, 
+    pub cap_rate: Option<f32>,
     pub yields: Option<f32>,
 }
- 
+
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
 pub struct RentFinancials {
     pub vacancy_rate: Option<f32>,
@@ -88,7 +91,7 @@ pub struct RentFinancials {
     pub property_taxes: Option<f32>,
     pub projected_rent: Option<f32>,
 }
- 
+
 //Documents metadata
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
 pub struct FinancialDetails {
@@ -100,7 +103,7 @@ pub struct FinancialDetails {
     pub total_monthly_cost: Option<f32>,
     pub monthly_cash_flow: Option<f32>,
 }
- 
+
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
 pub struct MarketDetails {
     pub coordinates: Option<String>,
@@ -114,14 +117,14 @@ pub struct MarketDetails {
 }
 
 #[derive(Clone, Debug, PartialEq, CandidType, Deserialize, Serialize)]
-pub enum SaleStatus{
+pub enum SaleStatus {
     Init,
     Incomplete,
-    Complete
+    Complete,
 }
 
 #[derive(Clone, Debug, PartialEq, CandidType, Deserialize, Serialize)]
-pub struct CanisterIds{
+pub struct CanisterIds {
     pub asset_canister: Principal,
     pub minter_canister: Principal,
 }
@@ -131,7 +134,7 @@ pub struct CanisterIds{
 pub struct Metadata {
     pub nft_token_id: String,
     pub symbol: String,
-    pub nft_uri: String, //image   
+    pub nft_uri: String, //image
     pub collection_name: String,
     pub desc: String,
     pub total_supply: u64,
@@ -139,7 +142,7 @@ pub struct Metadata {
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
-pub struct SaleData{
+pub struct SaleData {
     pub nft_token_id: String,
     pub buyer: Account,
     //tbd
@@ -153,5 +156,5 @@ pub struct SaleData{
 #[derive(Clone, Debug, PartialEq, CandidType, Deserialize, Serialize)]
 pub enum ApprovedResponse {
     CanisterId(CanisterIds),
-    StrResp(String)
+    StrResp(String),
 }

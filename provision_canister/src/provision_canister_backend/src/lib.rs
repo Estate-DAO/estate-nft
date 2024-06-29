@@ -11,7 +11,6 @@ use ic_cdk::api::management_canister::provisional::CanisterIdRecord;
 use ic_cdk::api::{self, is_controller};
 use ic_cdk::{caller, notify, query, storage, update};
 use serde::Serialize;
-use serde_json_any_key::*;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::vec;
@@ -44,12 +43,10 @@ pub struct Config {
 
 #[derive(Clone, Debug, CandidType, Default, Serialize, Deserialize)]
 pub struct CanisterData {
-    #[serde(with = "any_key_map")]
     pub form_data: FormData,
     pub form_counter: u16,
     #[serde(skip)]
     pub wasm_store: WasmStore,
-    #[serde(with = "any_key_map")]
     pub canister_store: CanisterStore,
     pub stored_key: String,
     pub known_principals: Vec<Principal>,
@@ -86,14 +83,6 @@ enum ProvisionError {
     MinterCanisterNotInitialized(),
     #[error("Invalid data: {0}")]
     InvalidData(String),
-}
-
-#[update(guard = "caller_is_authorized_principal")]
-fn dump_data_in_json() -> Result<Vec<u8>, String> {
-    let json_str = CANISTER_DATA
-        .with_borrow(|canister_data| serde_json::to_string(canister_data))
-        .map_err(|e| e.to_string())?;
-    Ok(json_str.as_bytes().to_vec())
 }
 
 #[update]
