@@ -45,7 +45,6 @@ pub struct Config {
 pub struct CanisterData {
     pub form_data: FormData,
     pub form_counter: u16,
-    #[serde(skip)]
     pub wasm_store: WasmStore,
     pub canister_store: CanisterStore,
     pub stored_key: String,
